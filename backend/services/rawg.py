@@ -39,6 +39,8 @@ async def get_game_screenshots(game_id: int) -> dict:
 async def get_genres() -> dict:
     return await _get("/genres")
 
-
 async def get_platforms() -> dict:
     return await _get("/platforms")
+
+async def get_featured_games():
+    return await _get("/games", {"ordering": "-added", "page_size": 5})
