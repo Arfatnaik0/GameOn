@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { X, User, Mail, Shield, Trash2, Save, AlertTriangle } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { updateMyProfile, deleteMyAccount } from '../api/users'
+import { updateMyProfile, deleteMyAccount, fetchUserProfile } from '../api/users'
 import { useQueryClient } from '@tanstack/react-query'
 import { useWindowSize } from '../hooks/useWindowSize'
 
@@ -28,8 +28,7 @@ const SettingsDrawer = ({ open, onClose }) => {
       setDeleteConfirm('')
       setSaveSuccess(false)
       // Fetch current profile to get bio
-      fetch(`http://localhost:8000/users/${user.id}`)
-        .then(r => r.json())
+      fetchUserProfile(user.id)
         .then(data => {
           setUsername(data.username ?? user.user_metadata?.full_name ?? '')
           setBio(data.bio ?? '')

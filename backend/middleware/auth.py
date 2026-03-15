@@ -1,25 +1,31 @@
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError
-from jose.backends import ECKey
 import httpx
 import os
-import base64
+from datetime import datetime, timedelta, timezone
 
 bearer_scheme = HTTPBearer()
 
-# Cache the JWKS so we don't fetch it on every request
+# Cache the JWKS with a TTL so keys refresh periodically.
 _jwks_cache = None
+_jwks_cache_expires_at = None
+JWKS_CACHE_TTL_SECONDS = int(os.getenv("JWKS_CACHE_TTL_SECONDS", "3600"))
 
 async def get_jwks():
-    global _jwks_cache
-    if _jwks_cache:
+    global _jwks_cache, _jwks_cache_expires_at
+
+    now = datetime.now(timezone.utc)
+    if _jwks_cache and _jwks_cache_expires_at and now < _jwks_cache_expires_at:
         return _jwks_cache
+
     supabase_url = os.getenv("SUPABASE_URL")
     async with httpx.AsyncClient() as client:
         response = await client.get(f"{supabase_url}/auth/v1/.well-known/jwks.json")
         response.raise_for_status()
         _jwks_cache = response.json()
+        _jwks_cache_expires_at = now + timedelta(seconds=JWKS_CACHE_TTL_SECONDS)
+
     return _jwks_cache
 
 class AuthenticatedUser:
