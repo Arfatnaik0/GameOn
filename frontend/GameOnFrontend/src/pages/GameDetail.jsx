@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Star, Calendar, ChevronLeft, ChevronRight, PenLine, Edit2 } from 'lucide-react'
 import { useGameDetail, useGameScreenshots } from '../hooks/useGames'
 import { useGameReviews, useMyReviewForGame } from '../hooks/useReviews'
 import { useAuth } from '../context/AuthContext'
 import GenreChip from '../components/GenreChip'
 import ReviewForm from '../components/ReviewForm'
 import ReviewList from '../components/ReviewList'
+import AddToListButton from '../components/AddToListButton'
+import GuestBanner from '../components/GuestBanner'
+import { ArrowLeft, Star, Calendar, ChevronLeft, ChevronRight, PenLine, Edit2, LogIn } from 'lucide-react'
 
 const GameDetail = () => {
   const { id } = useParams()
@@ -39,7 +41,7 @@ const GameDetail = () => {
       <p style={{ color: 'rgba(255,255,255,0.4)' }}>Game not found</p>
     </div>
   )
-
+  
   const genres = game.genres?.map(g => g.name) ?? []
   const platforms = game.platforms?.map(p => p.platform.name) ?? []
 
@@ -99,15 +101,28 @@ const GameDetail = () => {
           </div>
 
           {/* CTA */}
-          {user && (
-            <button
-              onClick={() => setShowForm(true)}
-              style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 28px', borderRadius: 14, cursor: 'pointer', background: 'linear-gradient(135deg, #dc1e3c, #9b0020)', border: 'none', color: '#fff', fontSize: 14, fontWeight: 600, boxShadow: '0 6px 25px rgba(220,30,60,0.45)', transition: 'all 0.2s' }}
-              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 10px 35px rgba(220,30,60,0.6)' }}
-              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 6px 25px rgba(220,30,60,0.45)' }}>
-              {myReview ? <><Edit2 size={16} /> Edit Your Review</> : <><PenLine size={16} /> Write a Review</>}
-            </button>
-          )}
+          {user ? (
+  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+    <button
+      onClick={() => setShowForm(true)}
+      style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 28px', borderRadius: 14, cursor: 'pointer', background: 'linear-gradient(135deg, #dc1e3c, #9b0020)', border: 'none', color: '#fff', fontSize: 14, fontWeight: 600, boxShadow: '0 6px 25px rgba(220,30,60,0.45)', transition: 'all 0.2s' }}
+      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 10px 35px rgba(220,30,60,0.6)' }}
+      onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 6px 25px rgba(220,30,60,0.45)' }}>
+      {myReview ? <><Edit2 size={16} /> Edit Your Review</> : <><PenLine size={16} /> Write a Review</>}
+    </button>
+    <AddToListButton gameId={Number(id)} session={session} dropUp />
+  </div>
+) : (
+  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+    <button
+      onClick={() => navigate('/login')}
+      style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 28px', borderRadius: 14, cursor: 'pointer', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.6)', fontSize: 14, fontWeight: 600, transition: 'all 0.2s' }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(220,30,60,0.4)'; e.currentTarget.style.color = '#fff' }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; e.currentTarget.style.color = 'rgba(255,255,255,0.6)' }}>
+      <LogIn size={16} /> Sign in to Review
+    </button>
+  </div>
+)}
         </div>
       </div>
 

@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import os
 import dotenv
-from routers import games, users, reviews
+from routers import games, users, reviews, lists
 
 dotenv.load_dotenv()
 
@@ -19,3 +19,4 @@ app.add_middleware(
 app.include_router(games.router)
 app.include_router(users.router)
 app.include_router(reviews.router)
+app.include_router(lists.router)

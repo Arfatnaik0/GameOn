@@ -2,7 +2,7 @@ import { useRef } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import GameCard from './GameCard'
 
-const HorizontalScroller = ({ title, games, onGameClick }) => {
+const HorizontalScroller = ({ title, games, onGameClick, listEntries = [] }) => {
   const ref = useRef(null)
   const scroll = (dir) => ref.current?.scrollBy({ left: dir * 220, behavior: 'smooth' })
 
@@ -32,21 +32,17 @@ const HorizontalScroller = ({ title, games, onGameClick }) => {
         </div>
       </div>
 
-      {/* Key fix: overflow visible vertically so card shadows show */}
       <div
         ref={ref}
         style={{
-          display: 'flex',
-          gap: 16,
-          overflowX: 'auto',
-          overflowY: 'visible',
+          display: 'flex', gap: 16,
+          overflowX: 'auto', overflowY: 'visible',
           paddingBottom: 8,
-          scrollbarWidth: 'none',
-          msOverflowStyle: 'none',
+          scrollbarWidth: 'none', msOverflowStyle: 'none',
         }}
       >
         {games?.map((game) => (
-          <GameCard key={game.id} game={game} onClick={onGameClick} />
+          <GameCard key={game.id} game={game} onClick={onGameClick} listEntries={listEntries} />
         ))}
       </div>
     </div>

@@ -2,44 +2,33 @@ import { Star } from 'lucide-react'
 import GenreChip from './GenreChip'
 import { useMyReviews } from '../hooks/useReviews'
 import { useAuth } from '../context/AuthContext'
-import { useEffect, useState } from 'react'
-import { fetchGamesByIds } from '../api/games'
 import { useNavigate } from 'react-router-dom'
+import { useGameDetailsBatch } from '../hooks/useGames'
 
 const LibraryPanel = () => {
   const navigate = useNavigate()
   const { session } = useAuth()
   const { data: reviewsData } = useMyReviews(session)
-  const [games, setGames] = useState([])
 
-  useEffect(() => {
-    const reviews = reviewsData?.results
-    if (!reviews?.length) return
+  const reviews = reviewsData?.results?.slice(0, 5) ?? []
+  const ids = reviews.map(r => r.rawg_game_id)
+  const { data: gameDetails } = useGameDetailsBatch(ids)
 
-    const ids = reviews.slice(0, 5).map(r => r.rawg_game_id)
-    fetchGamesByIds(ids).then(results => {
-      // Merge game data with user rating
-      const merged = results.map((game, i) => ({
-        id: game.id,
-        name: game.name,
-        cover: game.background_image,
-        genres: game.genres?.map(g => g.name) ?? [],
-        userRating: reviews[i].rating,
-      }))
-      setGames(merged)
-    })
-  }, [reviewsData])
+  const games = gameDetails
+    .map((game, i) => game ? ({
+      id: game.id,
+      name: game.name,
+      cover: game.background_image,
+      genres: game.genres?.map(g => g.name) ?? [],
+      userRating: reviews[i]?.rating,
+    }) : null)
+    .filter(Boolean)
 
   return (
     <div style={{
-      borderRadius: 16,
-      background: 'rgba(26,8,10,0.9)',
-      border: '1px solid rgba(220,30,60,0.12)',
-      backdropFilter: 'blur(20px)',
-      display: 'flex',
-      flexDirection: 'column',
-      overflow: 'hidden',
-      height: '100%',
+      borderRadius: 16, background: 'rgba(26,8,10,0.9)',
+      border: '1px solid rgba(220,30,60,0.12)', backdropFilter: 'blur(20px)',
+      display: 'flex', flexDirection: 'column', overflow: 'hidden', height: '100%',
     }}>
       <div style={{ padding: '14px 16px 12px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
         <h3 style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700, fontSize: 16, color: '#fff' }}>Recently Rated</h3>
@@ -55,8 +44,8 @@ const LibraryPanel = () => {
         ) : (
           games.map((game) => (
             <div key={game.id}
-            onClick={() => navigate(`/game/${game.id}`)}
-             style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: 'pointer', transition: 'background 0.2s' }}
+              onClick={() => navigate(`/game/${game.id}`)}
+              style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: 'pointer', transition: 'background 0.2s' }}
               onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
               <img src={game.cover} alt={game.name} style={{ width: 40, height: 40, borderRadius: 10, objectFit: 'cover', flexShrink: 0 }} />

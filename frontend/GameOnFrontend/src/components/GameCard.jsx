@@ -1,11 +1,14 @@
 import { useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Star } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
 import GenreChip from './GenreChip'
+import AddToListButton from './AddToListButton'
 
-const GameCard = ({ game }) => {
+const GameCard = ({ game, listEntries = [] }) => {
   const cardRef = useRef(null)
   const navigate = useNavigate()
+  const { session } = useAuth()
 
   const handleMouseMove = (e) => {
     const card = cardRef.current
@@ -48,8 +51,13 @@ const GameCard = ({ game }) => {
         <p style={{ fontSize: 12, fontWeight: 700, color: '#fff', marginBottom: 6, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontFamily: 'Rajdhani, sans-serif' }}>
           {game.name}
         </p>
-        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-          {game.genres.slice(0, 2).map((genre) => <GenreChip key={genre} label={genre} />)}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
+          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+            {game.genres.slice(0, 1).map((genre) => <GenreChip key={genre} label={genre} />)}
+          </div>
+          <div onClick={e => e.stopPropagation()} style={{ flexShrink: 0 }}>
+            <AddToListButton gameId={game.id} session={session} compact={true} dropUp listEntries={listEntries} />
+          </div>
         </div>
       </div>
     </div>

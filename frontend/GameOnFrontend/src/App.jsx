@@ -3,6 +3,8 @@ import { AuthProvider, useAuth } from './context/AuthContext'
 import Dashboard from './pages/Dashboard'
 import Login from './pages/Login'
 import GameDetail from './pages/GameDetail'
+import Profile from './pages/Profile'
+import Lists from './pages/Lists'
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth()
@@ -20,8 +22,12 @@ const ProtectedRoute = ({ children }) => {
 const AppRoutes = () => (
   <Routes>
     <Route path="/login" element={<Login />} />
-    <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-    <Route path="/game/:id" element={<ProtectedRoute><GameDetail /></ProtectedRoute>} />
+    {/* Public — guests can view */}
+    <Route path="/dashboard" element={<Dashboard />} />
+    <Route path="/game/:id" element={<GameDetail />} />
+    {/* Protected — must be signed in */}
+    <Route path="/profile/:userId" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+    <Route path="/lists" element={<ProtectedRoute><Lists /></ProtectedRoute>} />
     <Route path="*" element={<Navigate to="/dashboard" replace />} />
   </Routes>
 )
