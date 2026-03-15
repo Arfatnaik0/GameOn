@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from services import rawg
 
 router = APIRouter(prefix="/games", tags=["games"])
@@ -23,6 +23,23 @@ async def search_games(q: str, page: int = 1):
 @router.get("/featured")
 async def get_featured_games():
     data = await rawg.get_featured_games()
+    games = [
+        {
+            "id": g["id"],
+            "name": g["name"],
+            "cover": g["background_image"],
+            "rating": g["rating"],
+            "released": g["released"],
+            "genres": [genre["name"] for genre in g["genres"]],
+        }
+        for g in data["results"]
+    ]
+    return {"results": games}
+
+
+@router.get("/popular")
+async def get_popular_games():
+    data = await rawg.get_popular_games()
     games = [
         {
             "id": g["id"],

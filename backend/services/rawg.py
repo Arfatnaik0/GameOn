@@ -1,6 +1,7 @@
 import httpx
 import os
 from fastapi import HTTPException
+from datetime import datetime, timedelta
 
 RAWG_BASE_URL = "https://api.rawg.io/api"
 
@@ -9,7 +10,7 @@ client=httpx.AsyncClient(timeout=10.0)
 def _build_params(extra:dict=None)->dict:
     return {
         'key':os.getenv("RAWG_API_KEY"),
-        **extra
+        **(extra or {})
     }
 
 async def _get(endpoint:str,params:dict=None)->dict:
@@ -43,4 +44,19 @@ async def get_platforms() -> dict:
     return await _get("/platforms")
 
 async def get_featured_games():
-    return await _get("/games", {"ordering": "-added", "page_size": 5})
+    today = datetime.today().strftime('%Y-%m-%d')
+    forty_days_ago = (datetime.today() - timedelta(days=40)).strftime('%Y-%m-%d')
+    return await _get("/games", {
+        "ordering": "-rating",
+        "dates": f"{forty_days_ago},{today}",
+        "page_size": 5,
+    })
+
+async def get_popular_games():
+    one_year_ago = (datetime.today() - timedelta(days=365)).strftime('%Y-%m-%d')
+    today = datetime.today().strftime('%Y-%m-%d')
+    return await _get("/games", {
+        "ordering": "-rating",
+        "dates": f"{one_year_ago},{today}",
+        "page_size": 20,
+    })

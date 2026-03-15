@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Bell, Settings, ChevronDown } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { Bell, Settings, ChevronDown, User, LogOut, BarChart2 } from 'lucide-react'
 import Sidebar from '../components/Sidebar'
 import SearchBar from '../components/SearchBar'
 import HeroCarousel from '../components/HeroCarousel'
@@ -8,16 +8,34 @@ import LibraryPanel from '../components/LibraryPanel'
 import StatsPanel from '../components/StatsPanel'
 import { useFeaturedGames, useSearchGames } from '../hooks/useGames'
 import { useDebounce } from '../hooks/useDebounce'
+import { useAuth } from '../context/AuthContext'
+import { usePopularGames } from '../hooks/useGames'
+import { useMyReviewCount } from '../hooks/useReviews'
 
 const Dashboard = () => {
   const [query, setQuery] = useState('')
+  const [dropdownOpen, setDropdownOpen] = useState(false)
   const debouncedQuery = useDebounce(query, 300)
+  const { user, signOut, session } = useAuth()
+  const dropdownRef = useRef(null)
+  const { data: popular } = usePopularGames()
 
   const { data: featured, isLoading } = useFeaturedGames()
   const { data: searchResults } = useSearchGames(debouncedQuery)
+  const { data: reviewCountData } = useMyReviewCount(session)
+  const reviewCount = reviewCountData?.count ?? 0
 
-  const games = debouncedQuery.length >= 2 ? searchResults?.results : featured?.results
-  const reviewCount = 0
+  const games = debouncedQuery.length >= 2 ? searchResults?.results : popular?.results
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
 
   return (
     <div style={{ display: 'flex', height: '100vh', background: '#0a0608', overflow: 'hidden' }}>
@@ -33,31 +51,101 @@ const Dashboard = () => {
         }}>
           <div style={{ marginRight: 4 }}>
             <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)' }}>Good evening, </span>
-            <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Player</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>
+              {user?.user_metadata?.full_name?.split(' ')[0] ?? 'Player'}
+            </span>
           </div>
 
           <SearchBar value={query} onChange={setQuery} />
 
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
-            <button style={{ width: 36, height: 36, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(220,30,60,0.12)', cursor: 'pointer', transition: 'border-color 0.2s' }}
+            {/* Bell */}
+            <button style={{ width: 36, height: 36, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(220,30,60,0.12)', cursor: 'pointer' }}
               onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(220,30,60,0.5)'}
               onMouseLeave={e => e.currentTarget.style.borderColor = 'rgba(220,30,60,0.12)'}>
               <Bell size={15} color="#8a5a62" />
               <span style={{ position: 'absolute', top: 7, right: 7, width: 6, height: 6, borderRadius: '50%', background: '#dc1e3c', boxShadow: '0 0 6px rgba(220,30,60,0.9)' }} />
             </button>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', borderRadius: 12, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(220,30,60,0.12)', cursor: 'pointer', transition: 'border-color 0.2s' }}
-              onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(220,30,60,0.4)'}
-              onMouseLeave={e => e.currentTarget.style.borderColor = 'rgba(220,30,60,0.12)'}>
-              <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'linear-gradient(135deg, #dc1e3c, #7b2d8b)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#fff', boxShadow: '0 0 12px rgba(220,30,60,0.4)' }}>A</div>
-              <div>
-                <p style={{ fontSize: 12, fontWeight: 600, color: '#fff', lineHeight: 1 }}>Alex Ryan</p>
-                <p style={{ fontSize: 10, color: '#8a5a62', lineHeight: 1, marginTop: 3 }}>@alex.gg</p>
+            {/* Profile chip + dropdown */}
+            <div ref={dropdownRef} style={{ position: 'relative' }}>
+              <div
+                onClick={() => setDropdownOpen(o => !o)}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', borderRadius: 12, background: 'rgba(255,255,255,0.04)', border: `1px solid ${dropdownOpen ? 'rgba(220,30,60,0.4)' : 'rgba(220,30,60,0.12)'}`, cursor: 'pointer', transition: 'border-color 0.2s', userSelect: 'none' }}
+                onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(220,30,60,0.4)'}
+                onMouseLeave={e => { if (!dropdownOpen) e.currentTarget.style.borderColor = 'rgba(220,30,60,0.12)' }}>
+                {user?.user_metadata?.avatar_url ? (
+                  <img src={user.user_metadata.avatar_url} alt="avatar"
+                    style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover' }} />
+                ) : (
+                  <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'linear-gradient(135deg, #dc1e3c, #7b2d8b)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#fff' }}>
+                    {user?.user_metadata?.full_name?.[0] ?? 'G'}
+                  </div>
+                )}
+                <div>
+                  <p style={{ fontSize: 12, fontWeight: 600, color: '#fff', lineHeight: 1 }}>
+                    {user?.user_metadata?.full_name ?? 'Player'}
+                  </p>
+                  <p style={{ fontSize: 10, color: '#8a5a62', lineHeight: 1, marginTop: 3 }}>
+                    {user?.email ?? ''}
+                  </p>
+                </div>
+                <ChevronDown size={12} color="#8a5a62"
+                  style={{ transition: 'transform 0.2s', transform: dropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)' }} />
               </div>
-              <ChevronDown size={12} color="#8a5a62" />
+
+              {/* Dropdown */}
+              {dropdownOpen && (
+                <div style={{
+                  position: 'absolute', top: 'calc(100% + 8px)', right: 0,
+                  width: 200, borderRadius: 14, overflow: 'hidden', zIndex: 100,
+                  background: 'rgba(20,8,10,0.98)',
+                  border: '1px solid rgba(220,30,60,0.15)',
+                  backdropFilter: 'blur(30px)',
+                  boxShadow: '0 20px 60px rgba(0,0,0,0.7)',
+                }}>
+                  <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>
+                      {user?.user_metadata?.full_name}
+                    </p>
+                    <p style={{ fontSize: 11, color: '#8a5a62', marginTop: 2 }}>{user?.email}</p>
+                  </div>
+
+                  {[
+                    { icon: User, label: 'Your Profile' },
+                    { icon: BarChart2, label: 'Statistics' },
+                    { icon: Settings, label: 'Settings' },
+                  ].map(({ icon: Icon, label }) => (
+                    <button key={label} style={{
+                      width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '11px 16px', background: 'transparent', border: 'none',
+                      color: 'rgba(255,255,255,0.6)', fontSize: 13, cursor: 'pointer', transition: 'all 0.15s',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(220,30,60,0.08)'; e.currentTarget.style.color = '#fff' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(255,255,255,0.6)' }}>
+                      <Icon size={14} />
+                      {label}
+                    </button>
+                  ))}
+
+                  <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                    <button onClick={signOut} style={{
+                      width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '11px 16px', background: 'transparent', border: 'none',
+                      color: '#dc1e3c', fontSize: 13, cursor: 'pointer', transition: 'background 0.15s',
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(220,30,60,0.08)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                      <LogOut size={14} />
+                      Sign Out
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
-            <button style={{ width: 36, height: 36, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(220,30,60,0.12)', cursor: 'pointer', transition: 'border-color 0.2s' }}
+            {/* Settings */}
+            <button style={{ width: 36, height: 36, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(220,30,60,0.12)', cursor: 'pointer' }}
               onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(220,30,60,0.5)'}
               onMouseLeave={e => e.currentTarget.style.borderColor = 'rgba(220,30,60,0.12)'}>
               <Settings size={15} color="#8a5a62" />
@@ -74,26 +162,18 @@ const Dashboard = () => {
             </>
           ) : (
             <>
-              {/* Top row — all panels share the same height */}
               <div style={{ display: 'flex', gap: 10, alignItems: 'stretch' }}>
-
-                {/* Hero — fills remaining width */}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <HeroCarousel games={featured?.results} />
                 </div>
-
-                {/* Recently Rated — fixed width, natural height */}
                 <div style={{ width: 240, flexShrink: 0 }}>
-                  <LibraryPanel games={featured?.results} />
+                  <LibraryPanel />
                 </div>
-
-                {/* Stats — fixed width, stretches to match siblings */}
                 <div style={{ width: 200, flexShrink: 0 }}>
                   <StatsPanel reviewCount={reviewCount} />
                 </div>
               </div>
 
-              {/* Popular Games */}
               <div style={{ paddingBottom: 24 }}>
                 <HorizontalScroller
                   title="Popular Games"

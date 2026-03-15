@@ -14,7 +14,6 @@ body {
   background-color: #0a0608;
   color: #ffffff;
   font-family: 'Outfit', sans-serif;
-  overflow: hidden;
 }
 
 body::before {
