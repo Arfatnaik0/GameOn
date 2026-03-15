@@ -2,6 +2,7 @@ import { LayoutDashboard, List, LogOut, LogIn, X, Menu } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useWindowSize } from '../hooks/useWindowSize'
+import CloudLogo from './CloudLogo'
 
 const Sidebar = ({ mobileOpen, onClose }) => {
   const { signOut, user } = useAuth()
@@ -28,14 +29,7 @@ const Sidebar = ({ mobileOpen, onClose }) => {
       {/* Logo */}
       <div style={{ padding: '20px 20px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{
-            width: 32, height: 32, borderRadius: 10,
-            background: 'linear-gradient(135deg, #dc1e3c, #7b0020)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 4px 15px rgba(220,30,60,0.4)',
-          }}>
-            <span style={{ color: '#fff', fontFamily: 'Rajdhani, sans-serif', fontWeight: 700, fontSize: 14 }}>G</span>
-          </div>
+          <CloudLogo size={34} />
           <span style={{ color: '#fff', fontFamily: 'Rajdhani, sans-serif', fontWeight: 700, fontSize: 18, letterSpacing: 1 }}>
             GameOn
           </span>

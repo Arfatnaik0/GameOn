@@ -2,28 +2,39 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, Gamepad2 } from 'lucide-react'
 import GenreChip from './GenreChip'
+import { useWindowSize } from '../hooks/useWindowSize'
 
 const HeroCarousel = ({ games }) => {
   const [current, setCurrent] = useState(0)
   const [animating, setAnimating] = useState(false)
   const navigate = useNavigate()
+  const { isMobile } = useWindowSize()
+  const totalSlides = games?.length ?? 0
 
   const go = (index) => {
-    if (animating) return
+    if (animating || totalSlides === 0) return
     setAnimating(true)
-    setCurrent(index)
+    const nextIndex = ((index % totalSlides) + totalSlides) % totalSlides
+    setCurrent(nextIndex)
     setTimeout(() => setAnimating(false), 600)
   }
 
-  const prev = () => go(current === 0 ? games.length - 1 : current - 1)
-  const next = () => go(current === games.length - 1 ? 0 : current + 1)
+  const prev = () => go(current === 0 ? totalSlides - 1 : current - 1)
+  const next = () => go(current === totalSlides - 1 ? 0 : current + 1)
 
   useEffect(() => {
+    if (totalSlides <= 1) return
     const timer = setInterval(next, 5000)
     return () => clearInterval(timer)
-  }, [current])
+  }, [current, totalSlides])
 
-  if (!games?.length) return null
+  useEffect(() => {
+    if (current >= totalSlides && totalSlides > 0) {
+      setCurrent(0)
+    }
+  }, [current, totalSlides])
+
+  if (!totalSlides) return null
   const game = games[current]
 
   return (
@@ -86,13 +97,22 @@ const HeroCarousel = ({ games }) => {
         </div>
 
         {/* Bottom row: CTA + nav */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{
+          display: 'flex',
+          alignItems: isMobile ? 'stretch' : 'center',
+          justifyContent: 'space-between',
+          flexDirection: isMobile ? 'column' : 'row',
+          gap: isMobile ? 10 : 0,
+        }}>
           {/* View Game button */}
           <button
             onClick={() => navigate(`/game/${game.id}`)}
             style={{
               display: 'flex', alignItems: 'center', gap: 8,
-              padding: '10px 22px', borderRadius: 12, cursor: 'pointer',
+              justifyContent: 'center',
+              width: isMobile ? '100%' : 'auto',
+              whiteSpace: 'nowrap',
+              padding: isMobile ? '10px 16px' : '10px 22px', borderRadius: 12, cursor: 'pointer',
               background: 'linear-gradient(135deg, #dc1e3c, #9b0020)',
               border: 'none', color: '#fff', fontSize: 13, fontWeight: 600,
               boxShadow: '0 6px 25px rgba(220,30,60,0.45)',
@@ -106,7 +126,7 @@ const HeroCarousel = ({ games }) => {
           </button>
 
           {/* Nav controls */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: isMobile ? 'space-between' : 'flex-start', gap: 12 }}>
             {/* Arrows */}
             <div style={{ display: 'flex', gap: 6 }}>
               {[{ fn: prev, Icon: ChevronLeft }, { fn: next, Icon: ChevronRight }].map(({ fn, Icon }, i) => (
@@ -126,7 +146,7 @@ const HeroCarousel = ({ games }) => {
 
             {/* Dots + counter */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)' }}>{current + 1}/{games.length}</span>
+              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)' }}>{current + 1}/{totalSlides}</span>
               <div style={{ display: 'flex', gap: 5 }}>
                 {games.map((_, i) => (
                   <button key={i} onClick={() => go(i)}

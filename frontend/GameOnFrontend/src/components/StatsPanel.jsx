@@ -9,6 +9,7 @@ const StatsPanel = ({ reviewCount = 0 }) => {
   return (
     <div style={{
       flexShrink: 0,
+      height: '100%',
       borderRadius: 20,
       overflow: 'hidden',
       background: 'rgba(26,8,10,0.9)',

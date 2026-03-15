@@ -1,6 +1,7 @@
 import { useAuth } from '../context/AuthContext'
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import CloudLogo from '../components/CloudLogo'
 
 const Login = () => {
   const { signInWithGoogle, user, loading } = useAuth()
@@ -33,14 +34,7 @@ const Login = () => {
 }}>
         {/* Logo */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{
-            width: 44, height: 44, borderRadius: 14,
-            background: 'linear-gradient(135deg, #dc1e3c, #7b0020)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 6px 20px rgba(220,30,60,0.4)',
-          }}>
-            <span style={{ color: '#fff', fontFamily: 'Rajdhani, sans-serif', fontWeight: 700, fontSize: 20 }}>G</span>
-          </div>
+          <CloudLogo size={46} />
           <span style={{ color: '#fff', fontFamily: 'Rajdhani, sans-serif', fontWeight: 700, fontSize: 28, letterSpacing: 1 }}>
             GameOn
           </span>

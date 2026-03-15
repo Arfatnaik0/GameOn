@@ -207,10 +207,10 @@ const Dashboard = () => {
 </div>
                   {user && (
                     <div style={{ display: 'flex', gap: 12 }}>
-                      <div style={{ flex: 1, minWidth: 0, maxHeight: 220 }}>
+                      <div style={{ flex: 1, minWidth: 0, height: 220 }}>
                         <LibraryPanel />
                       </div>
-                      <div style={{ width: 140, flexShrink: 0 }}>
+                      <div style={{ width: 140, height: 220, flexShrink: 0 }}>
                         <StatsPanel reviewCount={reviewCount} />
                       </div>
                     </div>
