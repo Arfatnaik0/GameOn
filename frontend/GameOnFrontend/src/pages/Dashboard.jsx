@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Settings, ChevronDown, User, LogOut, LogIn } from 'lucide-react'
+import { Settings, ChevronDown, User, LogOut, LogIn, Menu } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
 import SearchBar from '../components/SearchBar'
@@ -14,15 +14,18 @@ import { useDebounce } from '../hooks/useDebounce'
 import { useAuth } from '../context/AuthContext'
 import { useMyReviewCount } from '../hooks/useReviews'
 import { useMyList } from '../hooks/useLists'
+import { useWindowSize } from '../hooks/useWindowSize'
 
 const Dashboard = () => {
   const [query, setQuery] = useState('')
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const debouncedQuery = useDebounce(query, 300)
   const { user, signOut, session } = useAuth()
   const dropdownRef = useRef(null)
   const navigate = useNavigate()
+  const { isMobile, isTablet } = useWindowSize()
 
   const { data: popular } = usePopularGames()
   const { data: featured, isLoading } = useFeaturedGames()
@@ -53,33 +56,43 @@ const Dashboard = () => {
 
   return (
     <div style={{ display: 'flex', height: '100vh', background: '#0a0608', overflow: 'hidden' }}>
-      <Sidebar />
+      <Sidebar mobileOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
         {/* Topbar */}
         <header style={{
-          display: 'flex', alignItems: 'center', gap: 16,
-          padding: '14px 24px', flexShrink: 0, zIndex: 10,
+          display: 'flex', alignItems: 'center', gap: isMobile ? 10 : 16,
+          padding: isMobile ? '12px 16px' : '14px 24px',
+          flexShrink: 0, zIndex: 10,
           borderBottom: '1px solid rgba(220,30,60,0.08)',
           background: 'rgba(10,6,8,0.9)', backdropFilter: 'blur(20px)',
         }}>
-          <div style={{ marginRight: 4 }}>
-            <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)' }}>{getGreeting()}, </span>
-            <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>
-              {user?.user_metadata?.full_name?.split(' ')[0] ?? 'Guest'}
-            </span>
-          </div>
+          {/* Hamburger on mobile */}
+          {isMobile && (
+            <button onClick={() => setSidebarOpen(true)}
+              style={{ width: 36, height: 36, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(220,30,60,0.12)', cursor: 'pointer', flexShrink: 0 }}>
+              <Menu size={16} color="#8a5a62" />
+            </button>
+          )}
+
+          {!isMobile && (
+            <div style={{ marginRight: 4, flexShrink: 0 }}>
+              <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)' }}>{getGreeting()}, </span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>
+                {user?.user_metadata?.full_name?.split(' ')[0] ?? 'Guest'}
+              </span>
+            </div>
+          )}
 
           <SearchBar value={query} onChange={setQuery} />
 
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
             {user ? (
               <>
-                {/* Profile chip + dropdown */}
                 <div ref={dropdownRef} style={{ position: 'relative' }}>
                   <div
                     onClick={() => setDropdownOpen(o => !o)}
-                    style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', borderRadius: 12, background: 'rgba(255,255,255,0.04)', border: `1px solid ${dropdownOpen ? 'rgba(220,30,60,0.4)' : 'rgba(220,30,60,0.12)'}`, cursor: 'pointer', transition: 'border-color 0.2s', userSelect: 'none' }}
+                    style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 6 : 10, padding: isMobile ? '6px 10px' : '8px 14px', borderRadius: 12, background: 'rgba(255,255,255,0.04)', border: `1px solid ${dropdownOpen ? 'rgba(220,30,60,0.4)' : 'rgba(220,30,60,0.12)'}`, cursor: 'pointer', transition: 'border-color 0.2s', userSelect: 'none' }}
                     onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(220,30,60,0.4)'}
                     onMouseLeave={e => { if (!dropdownOpen) e.currentTarget.style.borderColor = 'rgba(220,30,60,0.12)' }}>
                     {user?.user_metadata?.avatar_url ? (
@@ -90,14 +103,16 @@ const Dashboard = () => {
                         {user?.user_metadata?.full_name?.[0] ?? 'G'}
                       </div>
                     )}
-                    <div>
-                      <p style={{ fontSize: 12, fontWeight: 600, color: '#fff', lineHeight: 1 }}>
-                        {user?.user_metadata?.full_name ?? 'Player'}
-                      </p>
-                      <p style={{ fontSize: 10, color: '#8a5a62', lineHeight: 1, marginTop: 3 }}>
-                        {user?.email ?? ''}
-                      </p>
-                    </div>
+                    {!isMobile && (
+                      <div>
+                        <p style={{ fontSize: 12, fontWeight: 600, color: '#fff', lineHeight: 1 }}>
+                          {user?.user_metadata?.full_name ?? 'Player'}
+                        </p>
+                        <p style={{ fontSize: 10, color: '#8a5a62', lineHeight: 1, marginTop: 3 }}>
+                          {user?.email ?? ''}
+                        </p>
+                      </div>
+                    )}
                     <ChevronDown size={12} color="#8a5a62"
                       style={{ transition: 'transform 0.2s', transform: dropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)' }} />
                   </div>
@@ -115,7 +130,6 @@ const Dashboard = () => {
                         <p style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>{user?.user_metadata?.full_name}</p>
                         <p style={{ fontSize: 11, color: '#8a5a62', marginTop: 2 }}>{user?.email}</p>
                       </div>
-
                       {[
                         { icon: User, label: 'Your Profile', onClick: () => { navigate(`/profile/${user.id}`); setDropdownOpen(false) } },
                       ].map(({ icon: Icon, label, onClick }) => (
@@ -129,7 +143,6 @@ const Dashboard = () => {
                           <Icon size={14} />{label}
                         </button>
                       ))}
-
                       <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
                         <button onClick={signOut} style={{
                           width: '100%', display: 'flex', alignItems: 'center', gap: 10,
@@ -145,37 +158,40 @@ const Dashboard = () => {
                   )}
                 </div>
 
-                {/* Settings */}
-                <button
-                  onClick={() => setSettingsOpen(true)}
-                  style={{ width: 36, height: 36, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(220,30,60,0.12)', cursor: 'pointer', transition: 'all 0.2s' }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(220,30,60,0.5)'; e.currentTarget.style.background = 'rgba(220,30,60,0.08)' }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(220,30,60,0.12)'; e.currentTarget.style.background = 'rgba(255,255,255,0.04)' }}>
-                  <Settings size={15} color="#8a5a62" />
-                </button>
+                {!isMobile && (
+                  <button
+                    onClick={() => setSettingsOpen(true)}
+                    style={{ width: 36, height: 36, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(220,30,60,0.12)', cursor: 'pointer', transition: 'all 0.2s' }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(220,30,60,0.5)'; e.currentTarget.style.background = 'rgba(220,30,60,0.08)' }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(220,30,60,0.12)'; e.currentTarget.style.background = 'rgba(255,255,255,0.04)' }}>
+                    <Settings size={15} color="#8a5a62" />
+                  </button>
+                )}
               </>
             ) : (
               <button
                 onClick={() => navigate('/login')}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 8,
-                  padding: '8px 18px', borderRadius: 12, cursor: 'pointer',
+                  padding: isMobile ? '8px 12px' : '8px 18px',
+                  borderRadius: 12, cursor: 'pointer',
                   background: 'linear-gradient(135deg, #dc1e3c, #9b0020)',
                   border: 'none', color: '#fff', fontSize: 13, fontWeight: 600,
                   boxShadow: '0 4px 15px rgba(220,30,60,0.35)',
                 }}>
-                <LogIn size={14} /> Sign In
+                <LogIn size={14} />
+                {!isMobile && 'Sign In'}
               </button>
             )}
           </div>
         </header>
 
         {/* Body */}
-        <main style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 24 }}>
+        <main style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: isMobile ? '16px' : '20px 24px', display: 'flex', flexDirection: 'column', gap: isMobile ? 16 : 24 }}>
           {isLoading ? (
             <>
-              <div style={{ height: 340, borderRadius: 20, background: 'rgba(255,255,255,0.04)' }} />
-              <div style={{ height: 300, borderRadius: 20, background: 'rgba(255,255,255,0.03)' }} />
+              <div style={{ height: isMobile ? 220 : 340, borderRadius: 20, background: 'rgba(255,255,255,0.04)' }} />
+              <div style={{ height: 200, borderRadius: 20, background: 'rgba(255,255,255,0.03)' }} />
             </>
           ) : (
             <>
@@ -183,21 +199,56 @@ const Dashboard = () => {
                 <GuestBanner message="Sign in to track your library, write reviews and build your game list" />
               )}
 
-              <div style={{ display: 'flex', gap: 10, alignItems: 'stretch' }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <HeroCarousel games={featured?.results} />
+              {/* Hero + panels */}
+              {isMobile ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  <div style={{ flex: 1, minWidth: 0, height: '100%' }}>
+  <HeroCarousel games={featured?.results} />
+</div>
+                  {user && (
+                    <div style={{ display: 'flex', gap: 12 }}>
+                      <div style={{ flex: 1, minWidth: 0, maxHeight: 220 }}>
+                        <LibraryPanel />
+                      </div>
+                      <div style={{ width: 140, flexShrink: 0 }}>
+                        <StatsPanel reviewCount={reviewCount} />
+                      </div>
+                    </div>
+                  )}
                 </div>
-                {user && (
-                  <>
-                    <div style={{ width: 240, flexShrink: 0 }}>
-                      <LibraryPanel />
+              ) : isTablet ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  <div style={{ height: 320 }}>
+                    <HeroCarousel games={featured?.results} />
+                  </div>
+                  {user && (
+                    <div style={{ display: 'flex', gap: 12 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <LibraryPanel />
+                      </div>
+                      <div style={{ width: 180, flexShrink: 0 }}>
+                        <StatsPanel reviewCount={reviewCount} />
+                      </div>
                     </div>
-                    <div style={{ width: 200, flexShrink: 0 }}>
-                      <StatsPanel reviewCount={reviewCount} />
-                    </div>
-                  </>
-                )}
-              </div>
+                  )}
+                </div>
+              ) : (
+  <div style={{ display: 'flex', gap: 10, alignItems: 'stretch', height: 340 }}>
+    <div style={{ flex: 1, minWidth: 0 }}>
+      <HeroCarousel games={featured?.results} />
+    </div>
+    {user && (
+      <>
+        <div style={{ width: 240, flexShrink: 0 }}>
+          <LibraryPanel />
+        </div>
+        <div style={{ width: 200, flexShrink: 0 }}>
+          <StatsPanel reviewCount={reviewCount} />
+        </div>
+      </>
+    )}
+  </div>
+)}
 
               <div style={{ paddingBottom: 24 }}>
                 <HorizontalScroller

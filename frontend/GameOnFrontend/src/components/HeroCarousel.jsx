@@ -28,10 +28,10 @@ const HeroCarousel = ({ games }) => {
 
   return (
     <div style={{
-      position: 'relative', borderRadius: 20, overflow: 'hidden',
-      height: '100%', flexShrink: 0,
-      boxShadow: '0 25px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.06)',
-    }}>
+  position: 'relative', borderRadius: 20, overflow: 'hidden',
+  height: '100%', minHeight: 340, flexShrink: 0,
+  boxShadow: '0 25px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.06)',
+}}>
       {/* Background image */}
       <img
         key={game.id}

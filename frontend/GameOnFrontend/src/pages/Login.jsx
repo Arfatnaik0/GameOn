@@ -21,15 +21,16 @@ const Login = () => {
       }} />
 
       <div style={{
-        position: 'relative', zIndex: 1,
-        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 28,
-        padding: '48px 56px', borderRadius: 24,
-        background: 'rgba(26,8,10,0.9)',
-        border: '1px solid rgba(220,30,60,0.15)',
-        backdropFilter: 'blur(30px)',
-        boxShadow: '0 30px 80px rgba(0,0,0,0.6)',
-        minWidth: 360,
-      }}>
+  position: 'relative', zIndex: 1,
+  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 28,
+  padding: '40px 32px', borderRadius: 24,
+  background: 'rgba(26,8,10,0.9)',
+  border: '1px solid rgba(220,30,60,0.15)',
+  backdropFilter: 'blur(30px)',
+  boxShadow: '0 30px 80px rgba(0,0,0,0.6)',
+  width: '90%', maxWidth: 400,
+  boxSizing: 'border-box',
+}}>
         {/* Logo */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{

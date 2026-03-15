@@ -1,24 +1,32 @@
-import { LayoutDashboard, List, LogOut, LogIn } from 'lucide-react'
+import { LayoutDashboard, List, LogOut, LogIn, X, Menu } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useWindowSize } from '../hooks/useWindowSize'
 
-const Sidebar = () => {
+const Sidebar = ({ mobileOpen, onClose }) => {
   const { signOut, user } = useAuth()
   const navigate = useNavigate()
+  const { isMobile } = useWindowSize()
 
   const navItems = [
     { icon: LayoutDashboard, label: 'My Dashboard', path: '/dashboard' },
     { icon: List, label: "Game's List", path: '/lists' },
   ]
 
-  return (
+  const handleNav = (path) => {
+    navigate(path)
+    if (isMobile) onClose?.()
+  }
+
+  const sidebarContent = (
     <aside style={{
       width: 200, flexShrink: 0, display: 'flex', flexDirection: 'column',
-      height: '100vh', background: 'rgba(36,10,14,0.95)',
-      borderRight: '1px solid rgba(220,30,60,0.1)', backdropFilter: 'blur(20px)',
+      height: '100%', background: 'rgba(36,10,14,0.98)',
+      borderRight: isMobile ? 'none' : '1px solid rgba(220,30,60,0.1)',
+      backdropFilter: 'blur(20px)',
     }}>
       {/* Logo */}
-      <div style={{ padding: '20px 20px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+      <div style={{ padding: '20px 20px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{
             width: 32, height: 32, borderRadius: 10,
@@ -32,6 +40,12 @@ const Sidebar = () => {
             GameOn
           </span>
         </div>
+        {isMobile && (
+          <button onClick={onClose}
+            style={{ width: 30, height: 30, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.06)', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.5)' }}>
+            <X size={16} />
+          </button>
+        )}
       </div>
 
       {/* Nav */}
@@ -39,7 +53,7 @@ const Sidebar = () => {
         {navItems.map(({ icon: Icon, label, path }) => {
           const active = window.location.pathname === path
           return (
-            <button key={label} onClick={() => navigate(path)} style={{
+            <button key={label} onClick={() => handleNav(path)} style={{
               width: '100%', display: 'flex', alignItems: 'center', gap: 12,
               padding: '10px 14px', borderRadius: 14, marginBottom: 4,
               border: active ? '1px solid rgba(220,30,60,0.3)' : '1px solid transparent',
@@ -59,41 +73,62 @@ const Sidebar = () => {
         })}
       </div>
 
-      {/* Bottom — sign out or sign in depending on auth state */}
+      {/* Bottom */}
       <div style={{ padding: '12px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
         {user ? (
-          <button
-            onClick={signOut}
-            style={{
-              width: '100%', display: 'flex', alignItems: 'center', gap: 12,
-              padding: '10px 14px', borderRadius: 14,
-              background: 'transparent', border: 'none',
-              color: 'rgba(255,255,255,0.3)', fontSize: 13, cursor: 'pointer', transition: 'color 0.2s',
-            }}
-            onMouseEnter={e => e.currentTarget.style.color = '#fff'}
-            onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.3)'}>
-            <LogOut size={15} />
-            Log Out
+          <button onClick={signOut} style={{
+            width: '100%', display: 'flex', alignItems: 'center', gap: 12,
+            padding: '10px 14px', borderRadius: 14,
+            background: 'transparent', border: 'none',
+            color: 'rgba(255,255,255,0.3)', fontSize: 13, cursor: 'pointer', transition: 'color 0.2s',
+          }}
+          onMouseEnter={e => e.currentTarget.style.color = '#fff'}
+          onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.3)'}>
+            <LogOut size={15} /> Log Out
           </button>
         ) : (
-          <button
-            onClick={() => navigate('/login')}
-            style={{
-              width: '100%', display: 'flex', alignItems: 'center', gap: 12,
-              padding: '10px 14px', borderRadius: 14,
-              background: 'linear-gradient(135deg, rgba(220,30,60,0.2), rgba(140,10,25,0.2))',
-              border: '1px solid rgba(220,30,60,0.3)',
-              color: '#dc1e3c', fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(220,30,60,0.35), rgba(140,10,25,0.35))' }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(220,30,60,0.2), rgba(140,10,25,0.2))' }}>
-            <LogIn size={15} />
-            Sign In
+          <button onClick={() => handleNav('/login')} style={{
+            width: '100%', display: 'flex', alignItems: 'center', gap: 12,
+            padding: '10px 14px', borderRadius: 14,
+            background: 'linear-gradient(135deg, rgba(220,30,60,0.2), rgba(140,10,25,0.2))',
+            border: '1px solid rgba(220,30,60,0.3)',
+            color: '#dc1e3c', fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s',
+          }}>
+            <LogIn size={15} /> Sign In
           </button>
         )}
       </div>
     </aside>
   )
+
+  if (isMobile) {
+    return (
+      <>
+        {/* Backdrop */}
+        <div
+          onClick={onClose}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 300,
+            background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+            opacity: mobileOpen ? 1 : 0,
+            pointerEvents: mobileOpen ? 'all' : 'none',
+            transition: 'opacity 0.3s',
+          }}
+        />
+        {/* Drawer */}
+        <div style={{
+          position: 'fixed', top: 0, left: 0, bottom: 0,
+          width: 220, zIndex: 400,
+          transform: mobileOpen ? 'translateX(0)' : 'translateX(-100%)',
+          transition: 'transform 0.3s cubic-bezier(0.4,0,0.2,1)',
+        }}>
+          {sidebarContent}
+        </div>
+      </>
+    )
+  }
+
+  return sidebarContent
 }
 
 export default Sidebar

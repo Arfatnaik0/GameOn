@@ -3,11 +3,13 @@ import { X, User, Mail, Shield, Trash2, Save, AlertTriangle } from 'lucide-react
 import { useAuth } from '../context/AuthContext'
 import { updateMyProfile, deleteMyAccount } from '../api/users'
 import { useQueryClient } from '@tanstack/react-query'
+import { useWindowSize } from '../hooks/useWindowSize'
 
 const SettingsDrawer = ({ open, onClose }) => {
   const { user, session, signOut } = useAuth()
   const queryClient = useQueryClient()
   const drawerRef = useRef(null)
+  const { isMobile } = useWindowSize()
 
   const [username, setUsername] = useState('')
   const [bio, setBio] = useState('')
@@ -99,7 +101,7 @@ const SettingsDrawer = ({ open, onClose }) => {
         ref={drawerRef}
         style={{
           position: 'fixed', top: 0, right: 0, bottom: 0,
-          width: 420, zIndex: 500,
+          width: isMobile ? '100vw' : 420, zIndex: 500,
           background: 'rgba(16,5,8,0.98)',
           borderLeft: '1px solid rgba(220,30,60,0.15)',
           backdropFilter: 'blur(30px)',
