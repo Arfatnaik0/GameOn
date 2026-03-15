@@ -8,6 +8,10 @@ const ReviewRecapPopup = ({ open, onClose, payload }) => {
   const [isDownloading, setIsDownloading] = useState(false)
   const [coverFailed, setCoverFailed] = useState(false)
 
+  useEffect(() => {
+    setCoverFailed(false)
+  }, [payload])
+
   if (!open || !payload) return null
 
   const {
@@ -23,10 +27,6 @@ const ReviewRecapPopup = ({ open, onClose, payload }) => {
   } = payload
 
   const year = released ? String(released).slice(0, 4) : 'N/A'
-
-  useEffect(() => {
-    setCoverFailed(false)
-  }, [payload])
 
   const handleDownload = async () => {
     if (!cardRef.current || isDownloading) return
