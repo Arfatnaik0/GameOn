@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Star, Send, Trash2 } from 'lucide-react'
 import { useCreateReview, useUpdateReview, useDeleteReview } from '../hooks/useReviews'
 
-const ReviewForm = ({ gameId, session, existingReview, onClose }) => {
+const ReviewForm = ({ gameId, session, existingReview, onClose, onSubmitted }) => {
   const [rating, setRating] = useState(existingReview?.rating ?? 0)
   const [hovered, setHovered] = useState(0)
   const [text, setText] = useState(existingReview?.review_text ?? '')
@@ -14,11 +14,18 @@ const ReviewForm = ({ gameId, session, existingReview, onClose }) => {
 
   const handleSubmit = async () => {
     if (rating === 0) return
+    let savedReview
     if (isEditing) {
-      await updateReview.mutateAsync({ reviewId: existingReview.id, data: { rating, review_text: text } })
+      savedReview = await updateReview.mutateAsync({ reviewId: existingReview.id, data: { rating, review_text: text } })
     } else {
-      await createReview.mutateAsync({ rawg_game_id: gameId, rating, review_text: text })
+      savedReview = await createReview.mutateAsync({ rawg_game_id: gameId, rating, review_text: text })
     }
+    onSubmitted?.({
+      rating,
+      reviewText: text,
+      isEditing,
+      createdAt: savedReview?.created_at ?? existingReview?.created_at ?? new Date().toISOString(),
+    })
     onClose?.()
   }
 

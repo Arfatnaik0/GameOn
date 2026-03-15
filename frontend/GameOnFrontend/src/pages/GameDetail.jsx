@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Star, Calendar, ChevronLeft, ChevronRight, PenLine, Edit2, LogIn } from 'lucide-react'
+import { ArrowLeft, Star, Calendar, ChevronLeft, ChevronRight, PenLine, Edit2, LogIn, Sparkles } from 'lucide-react'
 import { useGameDetail, useGameScreenshots } from '../hooks/useGames'
 import { useGameReviews, useMyReviewForGame } from '../hooks/useReviews'
 import { useAuth } from '../context/AuthContext'
@@ -10,6 +10,7 @@ import ReviewForm from '../components/ReviewForm'
 import ReviewList from '../components/ReviewList'
 import AddToListButton from '../components/AddToListButton'
 import GuestBanner from '../components/GuestBanner'
+import ReviewRecapPopup from '../components/ReviewRecapPopup'
 
 const GameDetail = () => {
   const { id } = useParams()
@@ -18,6 +19,7 @@ const GameDetail = () => {
   const { isMobile, isTablet } = useWindowSize()
   const [screenshotIndex, setScreenshotIndex] = useState(0)
   const [showForm, setShowForm] = useState(false)
+  const [reviewPopupPayload, setReviewPopupPayload] = useState(null)
 
   const { data: game, isLoading: loadingGame } = useGameDetail(id)
   const { data: screenshots } = useGameScreenshots(id)
@@ -51,6 +53,34 @@ const GameDetail = () => {
     : null
 
   const heroHeight = isMobile ? 320 : 480
+
+  const createSnapshotPayload = ({ rating, reviewText }) => {
+    const fullName = user?.user_metadata?.full_name?.trim() || user?.user_metadata?.name?.trim() || 'Player'
+    const handle = user?.user_metadata?.preferred_username || user?.email?.split('@')?.[0] || 'player'
+    return {
+      gameName: game.name,
+      gameCover: game.background_image,
+      gameType: 'Game',
+      released: game.released,
+      rating,
+      reviewText,
+      userName: fullName,
+      userHandle: `@${handle}`,
+      userAvatar: user?.user_metadata?.avatar_url,
+    }
+  }
+
+  const handleReviewSubmitted = ({ rating, reviewText }) => {
+    setReviewPopupPayload(createSnapshotPayload({ rating, reviewText }))
+  }
+
+  const handleManualSnapshotOpen = () => {
+    if (!myReview) return
+    setReviewPopupPayload(createSnapshotPayload({
+      rating: myReview.rating,
+      reviewText: myReview.review_text,
+    }))
+  }
 
   return (
     <div style={{ background: '#0a0608', color: '#fff', fontFamily: 'Outfit, sans-serif', minHeight: '100vh' }}>
@@ -112,6 +142,28 @@ const GameDetail = () => {
                 style={{ display: 'flex', alignItems: 'center', gap: 8, padding: isMobile ? '10px 18px' : '13px 28px', borderRadius: 14, cursor: 'pointer', background: 'linear-gradient(135deg, #dc1e3c, #9b0020)', border: 'none', color: '#fff', fontSize: isMobile ? 13 : 14, fontWeight: 600, boxShadow: '0 6px 25px rgba(220,30,60,0.45)', transition: 'all 0.2s' }}>
                 {myReview ? <><Edit2 size={14} /> Edit Review</> : <><PenLine size={14} /> Write a Review</>}
               </button>
+              {myReview && (
+                <button
+                  onClick={handleManualSnapshotOpen}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    padding: isMobile ? '10px 14px' : '12px 18px',
+                    borderRadius: 14,
+                    cursor: 'pointer',
+                    background: 'rgba(255,255,255,0.08)',
+                    border: '1px solid rgba(255,255,255,0.16)',
+                    color: '#fff',
+                    fontSize: isMobile ? 12 : 13,
+                    fontWeight: 600,
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  <Sparkles size={14} />
+                  View Snapshot
+                </button>
+              )}
               <AddToListButton gameId={Number(id)} session={session} dropUp />
             </div>
           ) : (
@@ -133,7 +185,13 @@ const GameDetail = () => {
 
             {showForm && (
               <div style={{ marginBottom: 32 }}>
-                <ReviewForm gameId={Number(id)} session={session} existingReview={myReview} onClose={() => setShowForm(false)} />
+                <ReviewForm
+                  gameId={Number(id)}
+                  session={session}
+                  existingReview={myReview}
+                  onSubmitted={handleReviewSubmitted}
+                  onClose={() => setShowForm(false)}
+                />
               </div>
             )}
 
@@ -260,6 +318,12 @@ const GameDetail = () => {
           )}
         </div>
       </div>
+
+      <ReviewRecapPopup
+        open={!!reviewPopupPayload}
+        payload={reviewPopupPayload}
+        onClose={() => setReviewPopupPayload(null)}
+      />
     </div>
   )
 }
