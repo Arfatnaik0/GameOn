@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import html2canvas from 'html2canvas'
 import { X, Star, User, Download } from 'lucide-react'
 import CloudLogo from './CloudLogo'
@@ -6,6 +6,7 @@ import CloudLogo from './CloudLogo'
 const ReviewRecapPopup = ({ open, onClose, payload }) => {
   const cardRef = useRef(null)
   const [isDownloading, setIsDownloading] = useState(false)
+  const [coverFailed, setCoverFailed] = useState(false)
 
   if (!open || !payload) return null
 
@@ -23,16 +24,41 @@ const ReviewRecapPopup = ({ open, onClose, payload }) => {
 
   const year = released ? String(released).slice(0, 4) : 'N/A'
 
+  useEffect(() => {
+    setCoverFailed(false)
+  }, [payload])
+
   const handleDownload = async () => {
     if (!cardRef.current || isDownloading) return
 
     try {
       setIsDownloading(true)
-      const canvas = await html2canvas(cardRef.current, {
-        backgroundColor: '#0e0a18',
-        scale: 2,
-        useCORS: true,
-      })
+      if (document.fonts?.ready) {
+        await document.fonts.ready
+      }
+
+      // Ensure layout is fully painted before capturing to avoid text offset in output.
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+
+      const previousMaxHeight = cardRef.current.style.maxHeight
+      const previousOverflowY = cardRef.current.style.overflowY
+      cardRef.current.style.maxHeight = 'none'
+      cardRef.current.style.overflowY = 'visible'
+
+      let canvas
+      try {
+        canvas = await html2canvas(cardRef.current, {
+          backgroundColor: '#0e0a18',
+          scale: 2,
+          useCORS: true,
+          scrollX: 0,
+          scrollY: 0,
+          foreignObjectRendering: true,
+        })
+      } finally {
+        cardRef.current.style.maxHeight = previousMaxHeight
+        cardRef.current.style.overflowY = previousOverflowY
+      }
 
       const fileSafeName = String(gameName || 'review').replace(/[^a-zA-Z0-9-_]/g, '_')
       const link = document.createElement('a')
@@ -123,12 +149,36 @@ const ReviewRecapPopup = ({ open, onClose, payload }) => {
         </div>
 
         <div style={{ display: 'flex', gap: 12, marginBottom: 14 }}>
-          <img
-            src={gameCover}
-            alt={gameName}
-            crossOrigin="anonymous"
-            style={{ width: 82, height: 112, borderRadius: 12, objectFit: 'cover', flexShrink: 0 }}
-          />
+          {!coverFailed && gameCover ? (
+            <img
+              src={gameCover}
+              alt={gameName}
+              style={{ width: 82, height: 112, borderRadius: 12, objectFit: 'cover', flexShrink: 0 }}
+              onError={() => setCoverFailed(true)}
+            />
+          ) : (
+            <div
+              style={{
+                width: 82,
+                height: 112,
+                borderRadius: 12,
+                flexShrink: 0,
+                border: '1px solid rgba(255,255,255,0.08)',
+                background: 'linear-gradient(160deg, rgba(220,30,60,0.18), rgba(30,18,46,0.85))',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                padding: 8,
+              }}
+            >
+              <CloudLogo size={24} />
+              <span style={{ fontSize: 9, textAlign: 'center', color: 'rgba(255,255,255,0.7)', lineHeight: 1.2 }}>
+                Cover unavailable
+              </span>
+            </div>
+          )}
           <div style={{ flex: 1, minWidth: 0 }}>
             <h3 style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700, fontSize: 20, color: '#fff', lineHeight: 1.2, marginBottom: 6 }}>
               {gameName}
@@ -164,7 +214,7 @@ const ReviewRecapPopup = ({ open, onClose, payload }) => {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             {userAvatar ? (
-              <img src={userAvatar} alt="avatar" crossOrigin="anonymous" style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover' }} />
+              <img src={userAvatar} alt="avatar" style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover' }} />
             ) : (
               <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <User size={16} color="#fff" />
