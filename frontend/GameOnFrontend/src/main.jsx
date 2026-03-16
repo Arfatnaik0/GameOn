@@ -6,7 +6,7 @@ import "./index.css"
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      refetchOnWindowFocus: false, // ← this is the fix
+      refetchOnWindowFocus: false
     },
   },
 })
