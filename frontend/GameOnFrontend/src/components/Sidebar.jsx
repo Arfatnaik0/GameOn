@@ -1,4 +1,4 @@
-import { LayoutDashboard, List, LogOut, LogIn, X, Menu } from 'lucide-react'
+import { LayoutDashboard, List, LogOut, LogIn, X, MessageSquare} from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useWindowSize } from '../hooks/useWindowSize'
@@ -12,6 +12,7 @@ const Sidebar = ({ mobileOpen, onClose }) => {
   const navItems = [
     { icon: LayoutDashboard, label: 'My Dashboard', path: '/dashboard' },
     { icon: List, label: "Game's List", path: '/lists' },
+    { icon: MessageSquare, label: 'All Reviews', path: '/reviews' }
   ]
 
   const handleNav = (path) => {

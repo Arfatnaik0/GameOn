@@ -24,3 +24,6 @@ export const deleteReview = (reviewId, session) =>
 
 export const fetchMyReviews = (session) =>
   client.get('/reviews/me', getAuthHeader(session)).then(res => res.data)
+
+export const fetchAllReviews = (page = 1) =>
+  client.get('/reviews/', { params: { page, page_size: 20 } }).then(res => res.data)

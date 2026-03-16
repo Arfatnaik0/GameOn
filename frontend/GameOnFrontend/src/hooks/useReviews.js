@@ -3,7 +3,7 @@ import {
   fetchGameReviews, fetchMyReviewForGame,
   fetchMyReviewCount, createReview, updateReview, deleteReview
 } from '../api/reviews'
-
+import { fetchAllReviews } from '../api/reviews'
 import { fetchMyReviews } from '../api/reviews'
 
 export const useMyReviews = (session) =>
@@ -14,6 +14,14 @@ export const useMyReviews = (session) =>
   })
 
   
+export const useAllReviews = (page = 1) =>
+  useQuery({
+    queryKey: ['allReviews', page],
+    queryFn: () => fetchAllReviews(page),
+    staleTime: 2 * 60 * 1000,
+    keepPreviousData: true, // smooth pagination
+  })
+
 export const useGameReviews = (gameId) =>
   useQuery({
     queryKey: ['reviews', String(gameId)],
