@@ -2,17 +2,15 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import Optional
 from middleware.auth import get_current_user, AuthenticatedUser
-from supabase import create_client
 from gotrue.errors import AuthApiError
 import os
 import dotenv
+from db import supabase, supabase_admin
 
 dotenv.load_dotenv()
 
 router = APIRouter(prefix="/users", tags=["users"])
 
-supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_ANON_KEY"))
-supabase_admin = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_SERVICE_ROLE_KEY"))
 
 
 class ProfileUpdate(BaseModel):

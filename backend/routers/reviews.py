@@ -2,16 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from typing import Optional
 from middleware.auth import get_current_user, AuthenticatedUser
-from supabase import create_client
 import os
+from db import supabase, supabase_admin
 
 router = APIRouter(prefix="/reviews", tags=["reviews"])
 
-# Anon client for public reads
-supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_ANON_KEY"))
-
-# Service role client for authenticated writes — bypasses RLS safely
-supabase_admin = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_SERVICE_ROLE_KEY"))
 
 
 class ReviewCreate(BaseModel):

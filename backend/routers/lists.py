@@ -1,12 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from middleware.auth import get_current_user, AuthenticatedUser
-from supabase import create_client
 import os
+from db import supabase, supabase_admin
 
 router = APIRouter(prefix="/lists", tags=["lists"])
-
-supabase_admin = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_SERVICE_ROLE_KEY"))
 
 
 class ListEntry(BaseModel):
