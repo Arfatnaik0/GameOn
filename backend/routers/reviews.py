@@ -85,34 +85,21 @@ async def update_review(review_id: str, body: ReviewUpdate, current_user: Authen
     return {"review": result.data[0]}
 
 @router.get("/")
-async def get_all_reviews(page: int=1,page_size:int=20):
-    offset = (page -1) * page_size
+async def get_all_reviews(page: int = 1, page_size: int = 20):
+    offset = (page - 1) * page_size
 
-    result =supabase.table("reviews")\
-        .select("*",count="exact")\
+    result = supabase.table("reviews")\
+        .select("*, profiles(username, avatar_url)", count="exact")\
         .order("created_at", desc=True)\
         .range(offset, offset + page_size - 1)\
         .execute()
-    
-    reviews=result.data
-
-    for review in reviews:
-        try:
-            profile = supabase.table("profiles")\
-                .select("username, avatar_url")\
-                .eq("id", review["user_id"])\
-                .single()\
-                .execute()
-            review["profiles"] = profile.data
-        except Exception:
-            review["profiles"] = {"username": "Anonymous", "avatar_url": None}
 
     return {
-        "results": reviews,
+        "results": result.data,
         "total": result.count,
         "page": page,
         "page_size": page_size,
-        "total_pages":-(-result.count // page_size)
+        "total_pages": -(-result.count // page_size)
     }
 
 
