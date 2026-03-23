@@ -27,26 +27,12 @@ class ReviewUpdate(BaseModel):
 
 @router.get("/game/{game_id}")
 async def get_reviews_for_game(game_id: int):
-    reviews_result = supabase.table("reviews")\
-        .select("*")\
+    result = supabase.table("reviews")\
+        .select("*, profiles(username, avatar_url)")\
         .eq("rawg_game_id", game_id)\
         .order("created_at", desc=True)\
         .execute()
-
-    reviews = reviews_result.data
-
-    for review in reviews:
-        try:
-            profile = supabase.table("profiles")\
-                .select("username, avatar_url")\
-                .eq("id", review["user_id"])\
-                .single()\
-                .execute()
-            review["profiles"] = profile.data
-        except Exception:
-            review["profiles"] = {"username": "Anonymous", "avatar_url": None}
-
-    return {"results": reviews}
+    return {"results": result.data}
 
 
 @router.get("/me/count")
