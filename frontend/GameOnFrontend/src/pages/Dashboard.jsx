@@ -3,6 +3,7 @@ import { Settings, ChevronDown, User, LogOut, LogIn, Menu } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
 import SearchBar from '../components/SearchBar'
+import SearchDropdown from '../components/SearchDropdown'
 import HeroCarousel from '../components/HeroCarousel'
 import HorizontalScroller from '../components/HorizontalScroller'
 import LibraryPanel from '../components/LibraryPanel'
@@ -24,18 +25,18 @@ const Dashboard = () => {
   const debouncedQuery = useDebounce(query, 300)
   const { user, signOut, session } = useAuth()
   const dropdownRef = useRef(null)
+  const searchWrapperRef = useRef(null)
   const navigate = useNavigate()
   const { isMobile, isTablet } = useWindowSize()
 
   const { data: popular } = usePopularGames()
   const { data: featured, isLoading } = useFeaturedGames()
-  const { data: searchResults } = useSearchGames(debouncedQuery)
+  const { data: searchResults, isFetching: isSearching } = useSearchGames(debouncedQuery)
   const { data: reviewCountData } = useMyReviewCount(session)
   const { data: listData } = useMyList(session)
 
   const reviewCount = reviewCountData?.count ?? 0
   const listEntries = listData?.results ?? []
-  const games = debouncedQuery.length >= 2 ? searchResults?.results : popular?.results
 
   const getGreeting = () => {
     const hour = new Date().getHours()
@@ -44,10 +45,22 @@ const Dashboard = () => {
     return 'Good evening'
   }
 
+  // Close user dropdown on outside click
   useEffect(() => {
     const handler = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
         setDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  // Close search dropdown on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (searchWrapperRef.current && !searchWrapperRef.current.contains(e.target)) {
+        setQuery('')
       }
     }
     document.addEventListener('mousedown', handler)
@@ -66,6 +79,7 @@ const Dashboard = () => {
           flexShrink: 0, zIndex: 10,
           borderBottom: '1px solid rgba(220,30,60,0.08)',
           background: 'rgba(10,6,8,0.9)', backdropFilter: 'blur(20px)',
+          overflow: 'visible',
         }}>
           {/* Hamburger on mobile */}
           {isMobile && (
@@ -84,7 +98,18 @@ const Dashboard = () => {
             </div>
           )}
 
-          <SearchBar value={query} onChange={setQuery} />
+          {/* Search bar wrapper — positions the dropdown relative to the input */}
+          <div ref={searchWrapperRef} style={{ flex: 1, maxWidth: 448, position: 'relative' }}>
+            <SearchBar value={query} onChange={setQuery} />
+            {debouncedQuery.length >= 2 && (
+              <SearchDropdown
+                query={debouncedQuery}
+                results={searchResults?.results}
+                isLoading={isSearching}
+                onSelect={() => setQuery('')}
+              />
+            )}
+          </div>
 
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
             {user ? (
@@ -203,8 +228,8 @@ const Dashboard = () => {
               {isMobile ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                   <div style={{ flex: 1, minWidth: 0, height: '100%' }}>
-  <HeroCarousel games={featured?.results} />
-</div>
+                    <HeroCarousel games={featured?.results} />
+                  </div>
                   {user && (
                     <div style={{ display: 'flex', gap: 12 }}>
                       <div style={{ flex: 1, minWidth: 0, height: 220 }}>
@@ -233,27 +258,28 @@ const Dashboard = () => {
                   )}
                 </div>
               ) : (
-  <div style={{ display: 'flex', gap: 10, alignItems: 'stretch', height: 340 }}>
-    <div style={{ flex: 1, minWidth: 0 }}>
-      <HeroCarousel games={featured?.results} />
-    </div>
-    {user && (
-      <>
-        <div style={{ width: 240, flexShrink: 0 }}>
-          <LibraryPanel />
-        </div>
-        <div style={{ width: 200, flexShrink: 0 }}>
-          <StatsPanel reviewCount={reviewCount} />
-        </div>
-      </>
-    )}
-  </div>
-)}
+                <div style={{ display: 'flex', gap: 10, alignItems: 'stretch', height: 340 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <HeroCarousel games={featured?.results} />
+                  </div>
+                  {user && (
+                    <>
+                      <div style={{ width: 240, flexShrink: 0 }}>
+                        <LibraryPanel />
+                      </div>
+                      <div style={{ width: 200, flexShrink: 0 }}>
+                        <StatsPanel reviewCount={reviewCount} />
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
 
+              {/* Games section — always shows top 20 popular, never search results */}
               <div style={{ paddingBottom: 24 }}>
                 <HorizontalScroller
                   title="Games"
-                  games={games}
+                  games={popular?.results}
                   onGameClick={() => {}}
                   listEntries={listEntries}
                 />
