@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 export const usePWAInstall = () => {
   const [installPrompt, setInstallPrompt] = useState(null)
@@ -10,28 +10,42 @@ export const usePWAInstall = () => {
     const ios = /iphone|ipad|ipod/i.test(navigator.userAgent)
     setIsIOS(ios)
 
-    // Detect if already installed (standalone mode)
-    const standalone = window.matchMedia('(display-mode: standalone)').matches
-    setIsInstalled(standalone)
+    // Detect if already installed (display-mode + iOS standalone)
+    const standalone =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      window.navigator.standalone === true
+    setIsInstalled(Boolean(standalone))
 
-    const handler = (e) => {
-      e.preventDefault() // stop browser showing its own prompt immediately
-      setInstallPrompt(e)
+    const onBeforeInstallPrompt = (event) => {
+      event.preventDefault()
+      setInstallPrompt(event)
     }
 
-    window.addEventListener('beforeinstallprompt', handler)
-    return () => window.removeEventListener('beforeinstallprompt', handler)
-  }, [])
-
-  const triggerInstall = async () => {
-    if (!installPrompt) return
-    installPrompt.prompt()
-    const { outcome } = await installPrompt.userChoice
-    if (outcome === 'accepted') {
+    const onAppInstalled = () => {
       setIsInstalled(true)
       setInstallPrompt(null)
     }
-  }
+
+    window.addEventListener('beforeinstallprompt', onBeforeInstallPrompt)
+    window.addEventListener('appinstalled', onAppInstalled)
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', onBeforeInstallPrompt)
+      window.removeEventListener('appinstalled', onAppInstalled)
+    }
+  }, [])
+
+  const triggerInstall = useCallback(async () => {
+    if (!installPrompt) return
+
+    installPrompt.prompt()
+    const { outcome } = await installPrompt.userChoice
+    setInstallPrompt(null)
+
+    if (outcome === 'accepted') {
+      setIsInstalled(true)
+    }
+  }, [installPrompt])
 
   return { canInstall: !!installPrompt, isInstalled, isIOS, triggerInstall }
 }

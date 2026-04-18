@@ -4,14 +4,12 @@ import { useAuth } from '../context/AuthContext'
 import { updateMyProfile, deleteMyAccount, fetchUserProfile } from '../api/users'
 import { useQueryClient } from '@tanstack/react-query'
 import { useWindowSize } from '../hooks/useWindowSize'
-import { usePWAInstall } from '../hooks/usePWAInstall'
 
-const SettingsDrawer = ({ open, onClose }) => {
+const SettingsDrawer = ({ open, onClose, canInstall, isInstalled, isIOS, triggerInstall }) => {
   const { user, session, signOut } = useAuth()
   const queryClient = useQueryClient()
   const drawerRef = useRef(null)
   const { isMobile } = useWindowSize()
-  const { canInstall, isInstalled, isIOS, triggerInstall } = usePWAInstall()
 
   const [username, setUsername] = useState('')
   const [bio, setBio] = useState('')

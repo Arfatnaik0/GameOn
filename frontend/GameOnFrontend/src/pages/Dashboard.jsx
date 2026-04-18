@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Settings, ChevronDown, User, LogOut, LogIn, Menu } from 'lucide-react'
+import { Settings, ChevronDown, User, LogOut, LogIn, Menu, Download } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
 import SearchBar from '../components/SearchBar'
@@ -16,6 +16,7 @@ import { useAuth } from '../context/AuthContext'
 import { useMyReviewCount } from '../hooks/useReviews'
 import { useMyList } from '../hooks/useLists'
 import { useWindowSize } from '../hooks/useWindowSize'
+import { usePWAInstall } from '../hooks/usePWAInstall'
 
 const Dashboard = () => {
   const [query, setQuery] = useState('')
@@ -28,6 +29,7 @@ const Dashboard = () => {
   const searchWrapperRef = useRef(null)
   const navigate = useNavigate()
   const { isMobile, isTablet } = useWindowSize()
+  const { canInstall, isInstalled, isIOS, triggerInstall } = usePWAInstall()
 
   const { data: popular } = usePopularGames()
   const { data: featured, isLoading } = useFeaturedGames()
@@ -112,6 +114,23 @@ const Dashboard = () => {
           </div>
 
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            {!isInstalled && canInstall && (
+              <button
+                onClick={triggerInstall}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: isMobile ? '8px 10px' : '8px 14px',
+                  borderRadius: 12, cursor: 'pointer',
+                  background: 'linear-gradient(135deg, #dc1e3c, #9b0020)',
+                  border: 'none', color: '#fff', fontSize: 12, fontWeight: 700,
+                  boxShadow: '0 4px 15px rgba(220,30,60,0.35)',
+                  flexShrink: 0,
+                }}>
+                <Download size={13} />
+                {!isMobile && 'Install App'}
+              </button>
+            )}
+
             {user ? (
               <>
                 <div ref={dropdownRef} style={{ position: 'relative' }}>
@@ -289,7 +308,14 @@ const Dashboard = () => {
         </main>
       </div>
 
-      <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <SettingsDrawer
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        canInstall={canInstall}
+        isInstalled={isInstalled}
+        isIOS={isIOS}
+        triggerInstall={triggerInstall}
+      />
     </div>
   )
 }
