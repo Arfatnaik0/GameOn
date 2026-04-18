@@ -1,15 +1,17 @@
 import { useState, useEffect, useRef } from 'react'
-import { X, User, Mail, Shield, Trash2, Save, AlertTriangle } from 'lucide-react'
+import { X, User, Mail, Shield, Trash2, Save, AlertTriangle,Download,Smartphone} from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { updateMyProfile, deleteMyAccount, fetchUserProfile } from '../api/users'
 import { useQueryClient } from '@tanstack/react-query'
 import { useWindowSize } from '../hooks/useWindowSize'
+import { usePWAInstall } from '../hooks/usePWAInstall'
 
 const SettingsDrawer = ({ open, onClose }) => {
   const { user, session, signOut } = useAuth()
   const queryClient = useQueryClient()
   const drawerRef = useRef(null)
   const { isMobile } = useWindowSize()
+  const { canInstall, isInstalled, isIOS, triggerInstall } = usePWAInstall()
 
   const [username, setUsername] = useState('')
   const [bio, setBio] = useState('')
@@ -172,6 +174,44 @@ const SettingsDrawer = ({ open, onClose }) => {
               </div>
             </div>
           </section>
+
+          {/* PWA Install Section */}
+{!isInstalled && (canInstall || isIOS) && (
+  <section>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+      <Smartphone size={14} color="#dc1e3c" />
+      <h3 style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700, fontSize: 14, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: 1 }}>
+        Install App
+      </h3>
+    </div>
+
+    <div style={{ padding: '20px', borderRadius: 16, background: 'rgba(220,30,60,0.04)', border: '1px solid rgba(220,30,60,0.15)' }}>
+      <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', marginBottom: 12, lineHeight: 1.6 }}>
+        Add GameOn to your home screen for quick access — works like a native app.
+      </p>
+
+      {isIOS ? (
+        <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', lineHeight: 1.7 }}>
+          Tap the <strong style={{ color: 'rgba(255,255,255,0.5)' }}>Share</strong> button in Safari, then choose{' '}
+          <strong style={{ color: 'rgba(255,255,255,0.5)' }}>"Add to Home Screen"</strong>.
+        </p>
+      ) : (
+        <button
+          onClick={triggerInstall}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            width: '100%', padding: '11px 20px', borderRadius: 10, cursor: 'pointer',
+            background: 'linear-gradient(135deg, #dc1e3c, #9b0020)',
+            border: 'none', color: '#fff', fontSize: 13, fontWeight: 600,
+            boxShadow: '0 4px 15px rgba(220,30,60,0.3)',
+          }}>
+          <Download size={13} />
+          Add to Home Screen
+        </button>
+      )}
+    </div>
+  </section>
+)}
 
           {/* Section: Edit Profile */}
           <section>
