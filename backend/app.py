@@ -29,3 +29,7 @@ app.include_router(games.router)
 app.include_router(users.router)
 app.include_router(reviews.router)
 app.include_router(lists.router)
+
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
