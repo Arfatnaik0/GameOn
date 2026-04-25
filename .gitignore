@@ -5,3 +5,4 @@ venv
 !.env.example
 __pycache__/
 progress.md
+docker-compose.yml
