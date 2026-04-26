@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 import os
 import dotenv
 from routers import games, users, reviews, lists, socials
@@ -7,6 +8,8 @@ from routers import games, users, reviews, lists, socials
 dotenv.load_dotenv()
 
 app = FastAPI()
+
+app.add_middleware(GZipMiddleware, minimum_size=500)
 
 frontend_urls = [
     origin.strip()

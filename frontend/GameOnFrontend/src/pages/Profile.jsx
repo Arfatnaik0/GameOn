@@ -6,6 +6,12 @@ import { useUserProfile, useUserReviews, useUpdateProfile } from '../hooks/usePr
 import { useGameDetailsBatch } from '../hooks/useGames'
 import { useWindowSize } from '../hooks/useWindowSize'
 import { getGameCoverUrl } from '../api/games'
+import {
+  getAchievementLabel,
+  getLatestAchievementTarget,
+  getNextAchievementTarget,
+  getVisibleAchievementTargets,
+} from '../lib/achievements'
 
 const Profile = () => {
   const { userId } = useParams()
@@ -24,11 +30,12 @@ const Profile = () => {
 
   const reviews = reviewsData?.results ?? []
   const ids = reviews.map(r => r.rawg_game_id)
-  const { data: gameDetails } = useGameDetailsBatch(ids)
+  const { data: gameDetails, isLoading: loadingGameDetails, isFetching: fetchingGameDetails } = useGameDetailsBatch(ids)
+  const gameTitlesLoading = loadingGameDetails || fetchingGameDetails
 
   const enrichedReviews = reviews.map((review, i) => ({
     ...review,
-    gameName: gameDetails[i]?.name ?? 'Unknown',
+    gameName: gameDetails[i]?.name ?? null,
     gameCover: gameDetails[i]?.background_image ?? null,
     gameId: gameDetails[i]?.id,
   }))
@@ -43,6 +50,9 @@ const Profile = () => {
   const avgRating = reviews.length
     ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
     : null
+  const latestAchievementTarget = getLatestAchievementTarget(reviews.length)
+  const nextAchievementTarget = getNextAchievementTarget(reviews.length)
+  const visibleAchievements = getVisibleAchievementTargets(reviews.length)
 
   const handleSave = async () => {
     await updateProfile.mutateAsync({ data: { username, bio }, session })
@@ -132,12 +142,51 @@ const Profile = () => {
           {[
             { label: 'Total Reviews', value: reviews.length },
             { label: 'Avg Rating Given', value: avgRating ? `${avgRating} / 10` : '—' },
+            { label: 'Next Achievement', value: nextAchievementTarget ? `${nextAchievementTarget} Reviews` : 'Completed' },
           ].map(({ label, value }) => (
             <div key={label} style={{ flex: 1, padding: isMobile ? '16px' : '20px 24px', borderRadius: 16, background: 'rgba(26,8,10,0.9)', border: '1px solid rgba(220,30,60,0.12)', backdropFilter: 'blur(20px)', textAlign: isMobile ? 'center' : 'left' }}>
               <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>{label}</p>
               <p style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700, fontSize: isMobile ? 26 : 32, color: '#fff' }}>{value}</p>
             </div>
           ))}
+        </div>
+
+        {/* Achievement progression */}
+        <div style={{ marginBottom: 34, padding: isMobile ? '16px' : '20px 24px', borderRadius: 16, background: 'rgba(26,8,10,0.9)', border: '1px solid rgba(220,30,60,0.12)', backdropFilter: 'blur(20px)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', flexDirection: isMobile ? 'column' : 'row', gap: 8, marginBottom: 14 }}>
+            <h2 style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700, fontSize: isMobile ? 18 : 21 }}>
+              Achievements
+            </h2>
+            <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.42)' }}>
+              {latestAchievementTarget
+                ? `Latest: ${getAchievementLabel(latestAchievementTarget)}`
+                : 'Complete Review 5 games to unlock your first achievement'}
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {visibleAchievements.map((target) => {
+              const completed = reviews.length >= target
+              const isNext = !completed && target === nextAchievementTarget
+
+              return (
+                <div key={target} style={{ padding: '10px 12px', borderRadius: 12, border: `1px solid ${completed ? 'rgba(67,182,120,0.35)' : 'rgba(220,30,60,0.2)'}`, background: completed ? 'rgba(67,182,120,0.08)' : 'rgba(255,255,255,0.02)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                  <div>
+                    <p style={{ color: '#fff', fontSize: 13, fontWeight: 700 }}>{getAchievementLabel(target)}</p>
+                    <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginTop: 2 }}>
+                      {completed ? 'Completed' : `${target - reviews.length} more reviews needed`}
+                    </p>
+                  </div>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: completed ? '#86efac' : isNext ? '#fda4af' : 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: 0.8 }}>
+                    {completed ? 'Unlocked' : isNext ? 'Next' : 'Locked'}
+                  </span>
+                </div>
+              )
+            })}
+            {visibleAchievements.length === 0 && (
+              <p style={{ color: 'rgba(255,255,255,0.38)', fontSize: 12 }}>No achievements available.</p>
+            )}
+          </div>
         </div>
 
         {/* Reviews list */}
@@ -156,11 +205,19 @@ const Profile = () => {
                 onMouseEnter={e => { if (review.gameId) e.currentTarget.style.background = 'rgba(255,255,255,0.06)' }}
                 onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}>
                 {review.gameCover && (
-                  <img src={getGameCoverUrl(review.gameCover)} alt={review.gameName}
+                  <img src={getGameCoverUrl(review.gameCover)} alt={review.gameName || 'Game cover'}
+                    loading="lazy"
+                    decoding="async"
                     style={{ width: isMobile ? 44 : 56, height: isMobile ? 44 : 56, borderRadius: 10, objectFit: 'cover', flexShrink: 0 }} />
                 )}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontWeight: 600, fontSize: isMobile ? 13 : 14, color: '#fff', marginBottom: 3 }}>{review.gameName}</p>
+                  {review.gameName ? (
+                    <p style={{ fontWeight: 600, fontSize: isMobile ? 13 : 14, color: '#fff', marginBottom: 3 }}>{review.gameName}</p>
+                  ) : gameTitlesLoading ? (
+                    <div style={{ width: isMobile ? '56%' : '36%', height: isMobile ? 13 : 14, borderRadius: 7, marginBottom: 6, background: 'linear-gradient(90deg, rgba(255,255,255,0.14), rgba(255,255,255,0.24), rgba(255,255,255,0.14))', backgroundSize: '220% 100%', animation: 'profileTitleShimmer 1.1s linear infinite' }} />
+                  ) : (
+                    <p style={{ fontWeight: 600, fontSize: isMobile ? 13 : 14, color: 'rgba(255,255,255,0.62)', marginBottom: 3 }}>Untitled game</p>
+                  )}
                   {!isMobile && review.review_text && (
                     <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', lineHeight: 1.5, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
                       {review.review_text}
@@ -179,6 +236,8 @@ const Profile = () => {
             ))}
           </div>
         )}
+
+        <style>{`@keyframes profileTitleShimmer { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }`}</style>
       </div>
     </div>
   )

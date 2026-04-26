@@ -1,10 +1,15 @@
 import { TrendingUp } from 'lucide-react'
+import {
+  getAchievementLabel,
+  getAchievementProgress,
+  getLatestAchievementTarget,
+} from '../lib/achievements'
 
 const StatsPanel = ({ reviewCount = 0 }) => {
-  const maxReviews = 20
+  const { nextTarget, progressRatio, remaining } = getAchievementProgress(reviewCount)
+  const latestAchievement = getLatestAchievementTarget(reviewCount)
   const circumference = 2 * Math.PI * 48
-  const progress = Math.min(reviewCount / maxReviews, 1)
-  const dashArray = `${progress * circumference} ${circumference}`
+  const dashArray = `${Math.max(0, Math.min(progressRatio, 1)) * circumference} ${circumference}`
 
   return (
     <div style={{
@@ -70,8 +75,15 @@ const StatsPanel = ({ reviewCount = 0 }) => {
         </div>
 
         <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', textAlign: 'center' }}>
-          {reviewCount === 0 ? 'Start reviewing games!' : reviewCount < 5 ? 'Keep going!' : 'Great reviewer!'}
+          {nextTarget
+            ? `${getAchievementLabel(nextTarget)} (${remaining} to go)`
+            : 'All achievement milestones complete'}
         </p>
+        {latestAchievement && (
+          <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.48)', textAlign: 'center', marginTop: 6 }}>
+            Latest unlock: {getAchievementLabel(latestAchievement)}
+          </p>
+        )}
       </div>
     </div>
   )

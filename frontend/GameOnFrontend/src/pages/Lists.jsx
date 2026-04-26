@@ -94,7 +94,7 @@ const Lists = () => {
     const game = gameByRawgId[entry.rawg_game_id]
     return {
       ...entry,
-      gameName: game?.name ?? 'Unknown Game',
+      gameName: game?.name ?? null,
       gameCover: game?.background_image ?? null,
       gameId: game?.id ?? entry.rawg_game_id,
       rating: game?.rating,
@@ -197,6 +197,8 @@ const Lists = () => {
           <img
             src={getGameCoverUrl(game.gameCover)}
             alt={game.gameName}
+            loading="lazy"
+            decoding="async"
             style={{ width: '100%', height: '100%', minHeight: isCompact ? 76 : 90, objectFit: 'cover', display: 'block' }}
           />
         ) : (
@@ -209,9 +211,17 @@ const Lists = () => {
 
       <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 8 }}>
         <div>
-          <h3 style={{ fontFamily: 'Rajdhani, sans-serif', fontSize: isCompact ? 16 : 18, lineHeight: 1.05, fontWeight: 800, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: 6 }}>
-            {game.gameName}
-          </h3>
+          {game.gameName ? (
+            <h3 style={{ fontFamily: 'Rajdhani, sans-serif', fontSize: isCompact ? 16 : 18, lineHeight: 1.05, fontWeight: 800, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: 6 }}>
+              {game.gameName}
+            </h3>
+          ) : loadingGames ? (
+            <div style={{ width: isCompact ? '56%' : '46%', height: isCompact ? 15 : 17, borderRadius: 7, marginBottom: 8, background: 'linear-gradient(90deg, rgba(255,255,255,0.14), rgba(255,255,255,0.24), rgba(255,255,255,0.14))', backgroundSize: '220% 100%', animation: 'listTitleShimmer 1.1s linear infinite' }} />
+          ) : (
+            <h3 style={{ fontFamily: 'Rajdhani, sans-serif', fontSize: isCompact ? 16 : 18, lineHeight: 1.05, fontWeight: 800, color: 'rgba(255,255,255,0.62)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: 6 }}>
+              Untitled game
+            </h3>
+          )}
           <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
             {game.rating && (
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, color: 'rgba(255,255,255,0.66)', fontSize: 11 }}>
@@ -388,6 +398,8 @@ const Lists = () => {
             {STATUS_KEYS.map(renderLane)}
           </div>
         )}
+
+        <style>{`@keyframes listTitleShimmer { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }`}</style>
       </main>
     </div>
   )

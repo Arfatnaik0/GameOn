@@ -1,5 +1,6 @@
 import { Star, User } from 'lucide-react'
 import ReviewReactionButtons from './ReviewReactionButtons'
+import { getAchievementLabel, getLatestAchievementTarget } from '../lib/achievements'
 
 const ReviewList = ({ reviews, currentUserId, session }) => {
   if (!reviews?.length) return (
@@ -10,7 +11,10 @@ const ReviewList = ({ reviews, currentUserId, session }) => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      {reviews.map(review => (
+      {reviews.map((review) => {
+        const achievementTarget = review.latest_achievement_target ?? getLatestAchievementTarget(review.review_count)
+
+        return (
         <div key={review.id} style={{
           padding: '16px 20px', borderRadius: 14,
           background: review.user_id === currentUserId ? 'rgba(220,30,60,0.06)' : 'rgba(255,255,255,0.03)',
@@ -34,6 +38,13 @@ const ReviewList = ({ reviews, currentUserId, session }) => {
                     <span style={{ marginLeft: 8, fontSize: 10, color: '#dc1e3c', fontWeight: 700 }}>YOU</span>
                   )}
                 </p>
+                {achievementTarget && (
+                  <p style={{ marginTop: 2 }}>
+                    <span style={{ fontSize: 10, color: '#fecdd3', border: '1px solid rgba(220,30,60,0.32)', background: 'rgba(220,30,60,0.12)', borderRadius: 999, padding: '2px 8px', fontWeight: 700 }}>
+                      {getAchievementLabel(achievementTarget)}
+                    </span>
+                  </p>
+                )}
                 <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>
                   {new Date(review.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
                 </p>
@@ -64,7 +75,8 @@ const ReviewList = ({ reviews, currentUserId, session }) => {
             <ReviewReactionButtons review={review} session={session} compact />
           </div>
         </div>
-      ))}
+        )
+      })}
     </div>
   )
 }

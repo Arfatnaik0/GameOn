@@ -1,21 +1,59 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Bell, Heart } from 'lucide-react'
+import { Bell, Heart, UserPlus } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useMyLikeNotifications } from '../hooks/useReviews'
+import { useSocialSummary } from '../hooks/useSocials'
 import { useWindowSize } from '../hooks/useWindowSize'
 
 const ReviewNotificationsBell = ({ session }) => {
   const [open, setOpen] = useState(false)
+  const [lastSeenActivity, setLastSeenActivity] = useState(0)
   const panelRef = useRef(null)
   const navigate = useNavigate()
   const { isMobile } = useWindowSize()
   const { data } = useMyLikeNotifications(session)
+  const { data: socialData } = useSocialSummary(session)
 
   const totalLikes = data?.total_likes ?? 0
   const notifications = useMemo(() => data?.notifications ?? [], [data?.notifications])
-  const unreadBadge = Math.min(totalLikes, 99)
+  const incomingRequests = useMemo(() => socialData?.incoming_requests ?? [], [socialData?.incoming_requests])
 
-  const previewItems = useMemo(() => notifications.slice(0, 6), [notifications])
+  const latestActivity = useMemo(() => {
+    const timestamps = []
+
+    notifications.forEach((item) => {
+      if (item.latest_liked_at) {
+        timestamps.push(new Date(item.latest_liked_at).getTime())
+      }
+    })
+
+    incomingRequests.forEach((item) => {
+      const requestTime = item.updated_at ?? item.created_at
+      if (requestTime) {
+        timestamps.push(new Date(requestTime).getTime())
+      }
+    })
+
+    return timestamps.length > 0 ? Math.max(...timestamps) : 0
+  }, [notifications, incomingRequests])
+
+  const hasNotificationData = notifications.length > 0 || incomingRequests.length > 0
+  const hasUnread = hasNotificationData && latestActivity > lastSeenActivity
+  const unreadBadge = hasUnread ? Math.min(totalLikes + incomingRequests.length, 99) : 0
+
+  const previewRequests = useMemo(() => incomingRequests.slice(0, 3), [incomingRequests])
+  const previewLikes = useMemo(() => notifications.slice(0, 6), [notifications])
+
+  useEffect(() => {
+    const userId = session?.user?.id
+    if (!userId || typeof window === 'undefined') {
+      setLastSeenActivity(0)
+      return
+    }
+
+    const saved = Number(window.localStorage.getItem(`gameon.notifications.seen.${userId}`) || 0)
+    setLastSeenActivity(Number.isFinite(saved) ? saved : 0)
+  }, [session?.user?.id])
 
   useEffect(() => {
     const handler = (event) => {
@@ -28,16 +66,39 @@ const ReviewNotificationsBell = ({ session }) => {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
+  const markAsRead = () => {
+    const userId = session?.user?.id
+    if (!userId || typeof window === 'undefined') return
+
+    window.localStorage.setItem(`gameon.notifications.seen.${userId}`, String(latestActivity))
+    setLastSeenActivity(latestActivity)
+  }
+
+  useEffect(() => {
+    if (open && hasNotificationData) {
+      markAsRead()
+    }
+  }, [open, hasNotificationData, latestActivity])
+
   const openGame = (rawgGameId) => {
     if (!rawgGameId) return
     navigate(`/game/${rawgGameId}`)
     setOpen(false)
   }
 
+  const openSocialRequests = () => {
+    navigate('/socials')
+    setOpen(false)
+  }
+
   return (
     <div ref={panelRef} style={{ position: 'relative' }}>
       <button
-        onClick={() => setOpen((value) => !value)}
+        onClick={() => setOpen((value) => {
+          const next = !value
+          if (next) markAsRead()
+          return next
+        })}
         style={{
           width: 36,
           height: 36,
@@ -98,19 +159,50 @@ const ReviewNotificationsBell = ({ session }) => {
           <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
             <p style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Review Notifications</p>
             <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 3 }}>
-              {totalLikes > 0
-                ? `${totalLikes} total likes on your reviews`
-                : 'No likes on your reviews yet'}
+              {incomingRequests.length > 0 && totalLikes > 0
+                ? `${incomingRequests.length} new friend requests and ${totalLikes} likes`
+                : incomingRequests.length > 0
+                  ? `${incomingRequests.length} new friend requests`
+                  : totalLikes > 0
+                    ? `${totalLikes} total likes on your reviews`
+                    : 'No notifications yet'}
             </p>
           </div>
 
-          {previewItems.length === 0 ? (
+          {previewRequests.length === 0 && previewLikes.length === 0 ? (
             <div style={{ padding: '18px 16px', color: 'rgba(255,255,255,0.45)', fontSize: 12 }}>
-              When someone likes your review, it will show up here.
+              New likes and friend requests will show up here.
             </div>
           ) : (
             <div>
-              {previewItems.map((item) => (
+              {previewRequests.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={openSocialRequests}
+                  style={{
+                    width: '100%',
+                    textAlign: 'left',
+                    padding: '12px 16px',
+                    border: 'none',
+                    borderBottom: '1px solid rgba(255,255,255,0.05)',
+                    background: 'transparent',
+                    cursor: 'pointer',
+                    color: 'inherit',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    <UserPlus size={12} color="#60a5fa" />
+                    <span style={{ fontSize: 12, color: '#fff', fontWeight: 700 }}>
+                      New friend request
+                    </span>
+                  </div>
+                  <p style={{ margin: 0, fontSize: 12, lineHeight: 1.5, color: 'rgba(255,255,255,0.6)' }}>
+                    {item.profile?.username ?? 'A player'} sent you a request.
+                  </p>
+                </button>
+              ))}
+
+              {previewLikes.map((item) => (
                 <button
                   key={item.review_id}
                   onClick={() => openGame(item.rawg_game_id)}

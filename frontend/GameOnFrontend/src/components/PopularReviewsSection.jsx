@@ -6,6 +6,7 @@ import { usePopularReviews } from '../hooks/useReviews'
 import { useGameDetailsBatch } from '../hooks/useGames'
 import { useWindowSize } from '../hooks/useWindowSize'
 import ReviewReactionButtons from './ReviewReactionButtons'
+import { getAchievementLabel, getLatestAchievementTarget } from '../lib/achievements'
 
 const PopularReviewsSection = ({ session }) => {
   const [page, setPage] = useState(1)
@@ -17,12 +18,13 @@ const PopularReviewsSection = ({ session }) => {
   const totalPages = data?.total_pages ?? 1
 
   const gameIds = useMemo(() => reviews.map((review) => review.rawg_game_id), [reviews])
-  const { data: gameDetails } = useGameDetailsBatch(gameIds)
+  const { data: gameDetails, isLoading: loadingGameDetails, isFetching: fetchingGameDetails } = useGameDetailsBatch(gameIds)
+  const gameTitlesLoading = loadingGameDetails || fetchingGameDetails
 
   const enrichedReviews = reviews.map((review, index) => ({
     ...review,
     gameId: gameDetails?.[index]?.id,
-    gameName: gameDetails?.[index]?.name ?? `RAWG #${review.rawg_game_id}`,
+    gameName: gameDetails?.[index]?.name ?? null,
     gameCover: getGameCoverUrl(gameDetails?.[index]?.background_image),
     gameReleasedYear: gameDetails?.[index]?.released ? String(gameDetails[index].released).slice(0, 4) : null,
   }))
@@ -79,7 +81,10 @@ const PopularReviewsSection = ({ session }) => {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          {enrichedReviews.map((review, index) => (
+          {enrichedReviews.map((review, index) => {
+            const achievementTarget = review.latest_achievement_target ?? getLatestAchievementTarget(review.review_count)
+
+            return (
             <article
               key={review.id}
               onClick={() => handleOpenGame(review.gameId)}
@@ -95,7 +100,9 @@ const PopularReviewsSection = ({ session }) => {
               {review.gameCover ? (
                 <img
                   src={review.gameCover}
-                  alt={review.gameName}
+                  alt={review.gameName || 'Game cover'}
+                  loading="lazy"
+                  decoding="async"
                   style={{ width: isMobile ? 58 : 68, height: isMobile ? 78 : 90, borderRadius: 8, objectFit: 'cover', border: '1px solid rgba(255,255,255,0.1)' }}
                 />
               ) : (
@@ -104,9 +111,17 @@ const PopularReviewsSection = ({ session }) => {
 
               <div style={{ minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 5, flexWrap: 'wrap' }}>
-                  <h3 style={{ fontFamily: 'Rajdhani, sans-serif', fontSize: isMobile ? 17 : isTablet ? 19 : 20, fontWeight: 700, color: '#fff', lineHeight: 1.15 }}>
-                    {review.gameName}
-                  </h3>
+                  {review.gameName ? (
+                    <h3 style={{ fontFamily: 'Rajdhani, sans-serif', fontSize: isMobile ? 17 : isTablet ? 19 : 20, fontWeight: 700, color: '#fff', lineHeight: 1.15 }}>
+                      {review.gameName}
+                    </h3>
+                  ) : gameTitlesLoading ? (
+                    <div style={{ width: isMobile ? '58%' : '44%', height: isMobile ? 15 : 17, borderRadius: 7, background: 'linear-gradient(90deg, rgba(255,255,255,0.14), rgba(255,255,255,0.26), rgba(255,255,255,0.14))', backgroundSize: '220% 100%', animation: 'popularTitleShimmer 1.1s linear infinite' }} />
+                  ) : (
+                    <h3 style={{ fontFamily: 'Rajdhani, sans-serif', fontSize: isMobile ? 17 : isTablet ? 19 : 20, fontWeight: 700, color: 'rgba(255,255,255,0.68)', lineHeight: 1.15 }}>
+                      Untitled game
+                    </h3>
+                  )}
                   {review.gameReleasedYear && (
                     <span style={{ fontSize: isMobile ? 10 : 11, color: 'rgba(200,221,245,0.7)' }}>{review.gameReleasedYear}</span>
                   )}
@@ -127,6 +142,11 @@ const PopularReviewsSection = ({ session }) => {
                   <span style={{ fontSize: isMobile ? 12 : 13, fontWeight: 600, color: 'rgba(220,235,255,0.9)' }}>
                     {review.profiles?.username ?? 'Anonymous'}
                   </span>
+                  {achievementTarget && (
+                    <span style={{ fontSize: 10, fontWeight: 700, color: '#fecdd3', border: '1px solid rgba(220,30,60,0.32)', background: 'rgba(220,30,60,0.12)', borderRadius: 999, padding: '2px 8px' }}>
+                      {getAchievementLabel(achievementTarget)}
+                    </span>
+                  )}
                   {renderStars(review.rating)}
                 </div>
 
@@ -137,9 +157,12 @@ const PopularReviewsSection = ({ session }) => {
                 <ReviewReactionButtons review={review} session={session} compact />
               </div>
             </article>
-          ))}
+            )
+          })}
         </div>
       )}
+
+      <style>{`@keyframes popularTitleShimmer { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }`}</style>
 
       {totalPages > 1 && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0 4px' }}>

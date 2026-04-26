@@ -6,7 +6,13 @@ import "./index.css"
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      refetchOnWindowFocus: false
+      refetchOnWindowFocus: false,
+      retry: 1,
+      staleTime: 2 * 60 * 1000,
+      gcTime: 30 * 60 * 1000,
+    },
+    mutations: {
+      retry: 0,
     },
   },
 })

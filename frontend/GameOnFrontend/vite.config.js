@@ -68,6 +68,16 @@ export default defineConfig({
               expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365 },
             },
           },
+          {
+            // Proxied RAWG images served by backend
+            urlPattern: /\/games\/image-proxy\?url=.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'game-image-proxy-cache',
+              expiration: { maxEntries: 300, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
         ],
       },
     }),

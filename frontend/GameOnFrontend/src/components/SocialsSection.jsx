@@ -15,6 +15,7 @@ import {
   useSocialSummary,
 } from '../hooks/useSocials'
 import ReviewReactionButtons from './ReviewReactionButtons'
+import { getAchievementLabel, getLatestAchievementTarget } from '../lib/achievements'
 
 const ProfileAvatar = ({ profile, size = 28 }) => (
   profile?.avatar_url ? (
@@ -59,11 +60,12 @@ const SocialsSection = ({ session }) => {
   ]), [friends, incomingRequests, outgoingRequests])
 
   const gameIds = useMemo(() => reviews.map(review => review.rawg_game_id), [reviews])
-  const { data: gameDetails } = useGameDetailsBatch(gameIds)
+  const { data: gameDetails, isLoading: loadingGameDetails, isFetching: fetchingGameDetails } = useGameDetailsBatch(gameIds)
+  const gameTitlesLoading = loadingGameDetails || fetchingGameDetails
   const enrichedReviews = reviews.map((review, index) => ({
     ...review,
     gameId: gameDetails?.[index]?.id,
-    gameName: gameDetails?.[index]?.name ?? `RAWG #${review.rawg_game_id}`,
+    gameName: gameDetails?.[index]?.name ?? null,
     gameCover: getGameCoverUrl(gameDetails?.[index]?.background_image),
   }))
 
@@ -205,10 +207,13 @@ const SocialsSection = ({ session }) => {
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column' }}>
-              {enrichedReviews.map(review => (
+              {enrichedReviews.map((review) => {
+                const achievementTarget = review.latest_achievement_target ?? getLatestAchievementTarget(review.review_count)
+
+                return (
                 <article key={review.id} onClick={() => review.gameId && navigate(`/game/${review.gameId}`)} style={{ display: 'grid', gridTemplateColumns: isMobile ? '54px 1fr' : '62px 1fr', gap: 12, padding: '12px 0', borderTop: '1px solid rgba(255,255,255,0.07)', cursor: review.gameId ? 'pointer' : 'default' }}>
                   {review.gameCover ? (
-                    <img src={review.gameCover} alt={review.gameName} style={{ width: isMobile ? 54 : 62, height: isMobile ? 72 : 82, borderRadius: 8, objectFit: 'cover' }} />
+                    <img src={review.gameCover} alt={review.gameName || 'Game cover'} loading="lazy" decoding="async" style={{ width: isMobile ? 54 : 62, height: isMobile ? 72 : 82, borderRadius: 8, objectFit: 'cover' }} />
                   ) : (
                     <div style={{ width: isMobile ? 54 : 62, height: isMobile ? 72 : 82, borderRadius: 8, background: 'rgba(255,255,255,0.06)' }} />
                   )}
@@ -216,18 +221,30 @@ const SocialsSection = ({ session }) => {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap', marginBottom: 5 }}>
                       <ProfileAvatar profile={review.profiles} size={22} />
                       <span style={{ color: 'rgba(255,255,255,0.82)', fontSize: 12, fontWeight: 700 }}>{review.profiles?.username || 'Anonymous'}</span>
+                      {achievementTarget && (
+                        <span style={{ fontSize: 10, fontWeight: 700, color: '#fecdd3', border: '1px solid rgba(220,30,60,0.32)', background: 'rgba(220,30,60,0.12)', borderRadius: 999, padding: '2px 8px' }}>
+                          {getAchievementLabel(achievementTarget)}
+                        </span>
+                      )}
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, color: '#fff', fontSize: 12, fontWeight: 800 }}>
                         <Star size={10} color="#dc1e3c" fill="#dc1e3c" /> {review.rating}/10
                       </span>
                     </div>
-                    <h3 style={{ fontFamily: 'Rajdhani, sans-serif', color: '#fff', fontSize: isMobile ? 17 : 19, lineHeight: 1.1, marginBottom: 5 }}>{review.gameName}</h3>
+                    {review.gameName ? (
+                      <h3 style={{ fontFamily: 'Rajdhani, sans-serif', color: '#fff', fontSize: isMobile ? 17 : 19, lineHeight: 1.1, marginBottom: 5 }}>{review.gameName}</h3>
+                    ) : gameTitlesLoading ? (
+                      <div style={{ width: isMobile ? '60%' : '45%', height: isMobile ? 15 : 17, borderRadius: 7, marginBottom: 6, background: 'linear-gradient(90deg, rgba(255,255,255,0.14), rgba(255,255,255,0.24), rgba(255,255,255,0.14))', backgroundSize: '220% 100%', animation: 'socialTitleShimmer 1.1s linear infinite' }} />
+                    ) : (
+                      <h3 style={{ fontFamily: 'Rajdhani, sans-serif', color: 'rgba(255,255,255,0.68)', fontSize: isMobile ? 17 : 19, lineHeight: 1.1, marginBottom: 5 }}>Untitled game</h3>
+                    )}
                     <p style={{ color: 'rgba(255,255,255,0.58)', fontSize: isMobile ? 12 : 13, lineHeight: 1.55, marginBottom: 9, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                       {review.review_text?.trim() || 'No written review.'}
                     </p>
                     <ReviewReactionButtons review={review} session={session} compact />
                   </div>
                 </article>
-              ))}
+                )
+              })}
             </div>
           )}
 
@@ -244,6 +261,8 @@ const SocialsSection = ({ session }) => {
           )}
         </div>
       </div>
+
+      <style>{`@keyframes socialTitleShimmer { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }`}</style>
     </section>
   )
 }

@@ -1,10 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from typing import Optional, Literal
+import os
 from middleware.auth import get_current_user, get_optional_user, AuthenticatedUser
 from db import supabase, supabase_admin
 
 router = APIRouter(prefix="/reviews", tags=["reviews"])
+
+ACHIEVEMENT_TARGETS = [5, 10, 25, 50, 100]
+POPULAR_REVIEW_CANDIDATE_LIMIT = max(50, int(os.getenv("POPULAR_REVIEW_CANDIDATE_LIMIT", "400")))
 
 
 
@@ -21,6 +25,14 @@ class ReviewUpdate(BaseModel):
 
 class ReviewReactionUpdate(BaseModel):
     reaction: Literal["like", "dislike"]
+
+
+def get_latest_achievement_target(review_count: int) -> Optional[int]:
+    latest = None
+    for target in ACHIEVEMENT_TARGETS:
+        if review_count >= target:
+            latest = target
+    return latest
 
 
 def enrich_reviews_with_reactions(reviews: list, current_user_id: Optional[str] = None) -> list:
@@ -45,6 +57,21 @@ def enrich_reviews_with_reactions(reviews: list, current_user_id: Optional[str] 
     counts_by_review = {review_id: {"like": 0, "dislike": 0} for review_id in review_ids}
     user_reaction_by_review = {}
 
+    reviewer_ids = list({review.get("user_id") for review in reviews if review.get("user_id")})
+    review_count_by_user = {reviewer_id: 0 for reviewer_id in reviewer_ids}
+    if reviewer_ids:
+        try:
+            review_count_rows = supabase_admin.table("reviews") \
+                .select("user_id") \
+                .in_("user_id", reviewer_ids) \
+                .execute()
+            for row in review_count_rows.data or []:
+                reviewer_id = row.get("user_id")
+                if reviewer_id in review_count_by_user:
+                    review_count_by_user[reviewer_id] += 1
+        except Exception as e:
+            print(f"Review achievement aggregation skipped: {e}")
+
     for row in reaction_data:
         review_id = row.get("review_id")
         reaction = row.get("reaction")
@@ -64,12 +91,16 @@ def enrich_reviews_with_reactions(reviews: list, current_user_id: Optional[str] 
         review_id = review.get("id")
         like_count = counts_by_review.get(review_id, {}).get("like", 0)
         dislike_count = counts_by_review.get(review_id, {}).get("dislike", 0)
+        review_count = review_count_by_user.get(review.get("user_id"), 0)
+        latest_achievement_target = get_latest_achievement_target(review_count)
         enriched.append({
             **review,
             "like_count": like_count,
             "dislike_count": dislike_count,
             "score": like_count - dislike_count,
             "current_user_reaction": user_reaction_by_review.get(review_id),
+            "review_count": review_count,
+            "latest_achievement_target": latest_achievement_target,
         })
 
     return enriched
@@ -288,6 +319,7 @@ async def get_popular_reviews(
     result = supabase.table("reviews")\
         .select("*, profiles(username, avatar_url)")\
         .order("created_at", desc=True)\
+        .range(0, POPULAR_REVIEW_CANDIDATE_LIMIT - 1)\
         .execute()
 
     enriched = enrich_reviews_with_reactions(

@@ -49,7 +49,7 @@ const LibraryPanel = () => {
               style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: 'pointer', transition: 'background 0.2s' }}
               onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-              <img src={getGameCoverUrl(game.cover)} alt={game.name} style={{ width: 40, height: 40, borderRadius: 10, objectFit: 'cover', flexShrink: 0 }} />
+              <img src={getGameCoverUrl(game.cover)} alt={game.name} loading="lazy" decoding="async" style={{ width: 40, height: 40, borderRadius: 10, objectFit: 'cover', flexShrink: 0 }} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ fontSize: 12, fontWeight: 600, color: '#fff', marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{game.name}</p>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
