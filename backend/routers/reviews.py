@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from typing import Optional, Literal
+from datetime import datetime, timedelta, timezone
 import os
 from middleware.auth import get_current_user, get_optional_user, AuthenticatedUser
 from db import supabase, supabase_admin
@@ -315,9 +316,11 @@ async def get_popular_reviews(
 ):
     page = max(1, page)
     page_size = max(1, min(page_size, 20))
+    weekly_cutoff = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
 
     result = supabase.table("reviews")\
         .select("*, profiles(username, avatar_url)")\
+        .gte("created_at", weekly_cutoff)\
         .order("created_at", desc=True)\
         .range(0, POPULAR_REVIEW_CANDIDATE_LIMIT - 1)\
         .execute()
