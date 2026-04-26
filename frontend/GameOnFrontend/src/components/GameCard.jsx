@@ -3,6 +3,7 @@ import { Star } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import GenreChip from './GenreChip'
 import AddToListButton from './AddToListButton'
+import { getGameCoverUrl } from '../api/games'
 
 const GameCard = ({ game, listEntries = [] }) => {
   const navigate = useNavigate()
@@ -21,7 +22,7 @@ const GameCard = ({ game, listEntries = [] }) => {
       }}
       style={{ position: 'relative', flexShrink: 0, width: '200px', height: '260px', borderRadius: '16px', overflow: 'hidden', cursor: 'pointer', transition: 'transform 0.18s ease, box-shadow 0.18s ease', willChange: 'transform' }}
     >
-      <img src={game.cover} alt={game.name}
+      <img src={getGameCoverUrl(game.cover)} alt={game.name}
         style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
 
       <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(7,4,15,1) 0%, rgba(7,4,15,0.3) 50%, transparent 100%)' }} />

@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import os
 import dotenv
-from routers import games, users, reviews, lists
+from routers import games, users, reviews, lists, socials
 
 dotenv.load_dotenv()
 
@@ -29,6 +29,7 @@ app.include_router(games.router)
 app.include_router(users.router)
 app.include_router(reviews.router)
 app.include_router(lists.router)
+app.include_router(socials.router)
 
 @app.get("/health")
 async def health():

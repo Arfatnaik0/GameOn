@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import { useUserProfile, useUserReviews, useUpdateProfile } from '../hooks/useProfile'
 import { useGameDetailsBatch } from '../hooks/useGames'
 import { useWindowSize } from '../hooks/useWindowSize'
+import { getGameCoverUrl } from '../api/games'
 
 const Profile = () => {
   const { userId } = useParams()
@@ -155,7 +156,7 @@ const Profile = () => {
                 onMouseEnter={e => { if (review.gameId) e.currentTarget.style.background = 'rgba(255,255,255,0.06)' }}
                 onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}>
                 {review.gameCover && (
-                  <img src={review.gameCover} alt={review.gameName}
+                  <img src={getGameCoverUrl(review.gameCover)} alt={review.gameName}
                     style={{ width: isMobile ? 44 : 56, height: isMobile ? 44 : 56, borderRadius: 10, objectFit: 'cover', flexShrink: 0 }} />
                 )}
                 <div style={{ flex: 1, minWidth: 0 }}>

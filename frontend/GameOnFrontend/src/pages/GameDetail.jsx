@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Star, Calendar, ChevronLeft, ChevronRight, PenLine, Edit2, LogIn, Sparkles } from 'lucide-react'
 import { useGameDetail, useGameScreenshots } from '../hooks/useGames'
+import { getGameCoverUrl } from '../api/games'
 import { useGameReviews, useMyReviewForGame } from '../hooks/useReviews'
 import { useUserProfile } from '../hooks/useProfile'
 import { useAuth } from '../context/AuthContext'
@@ -68,7 +69,7 @@ const GameDetail = () => {
     const handle = handleBase.toLowerCase().replace(/\s+/g, '_')
     return {
       gameName: game.name,
-      gameCover: game.background_image,
+      gameCover: getGameCoverUrl(game.background_image),
       gameType: 'Game',
       released: game.released,
       rating,
@@ -96,7 +97,7 @@ const GameDetail = () => {
 
       {/* Hero */}
       <div style={{ position: 'relative', height: heroHeight, overflow: 'hidden' }}>
-        <img src={game.background_image} alt={game.name}
+        <img src={getGameCoverUrl(game.background_image)} alt={game.name}
           style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, #0a0608 0%, rgba(10,6,8,0.5) 50%, rgba(10,6,8,0.2) 100%)' }} />
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to right, rgba(10,6,8,0.8) 0%, transparent 60%)' }} />
@@ -247,7 +248,7 @@ const GameDetail = () => {
               <div style={{ marginBottom: 40 }}>
                 <h2 style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700, fontSize: isMobile ? 18 : 22, marginBottom: 14 }}>Screenshots</h2>
                 <div style={{ position: 'relative', borderRadius: 14, overflow: 'hidden', marginBottom: 10, aspectRatio: '16/9' }}>
-                  <img src={shots[screenshotIndex]?.image} alt={`Screenshot ${screenshotIndex + 1}`}
+                  <img src={getGameCoverUrl(shots[screenshotIndex]?.image)} alt={`Screenshot ${screenshotIndex + 1}`}
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   {shots.length > 1 && (
                     <>
@@ -265,7 +266,7 @@ const GameDetail = () => {
                 </div>
                 <div style={{ display: 'flex', gap: 8, overflowX: 'auto' }}>
                   {shots.map((shot, i) => (
-                    <img key={shot.id} src={shot.image} alt={`thumb ${i}`} onClick={() => setScreenshotIndex(i)}
+                    <img key={shot.id} src={getGameCoverUrl(shot.image)} alt={`thumb ${i}`} onClick={() => setScreenshotIndex(i)}
                       style={{ width: isMobile ? 80 : 100, height: isMobile ? 50 : 60, borderRadius: 8, objectFit: 'cover', flexShrink: 0, cursor: 'pointer', border: `2px solid ${i === screenshotIndex ? '#dc1e3c' : 'transparent'}`, opacity: i === screenshotIndex ? 1 : 0.5 }} />
                   ))}
                 </div>
@@ -299,7 +300,7 @@ const GameDetail = () => {
           {!isMobile && !isTablet && (
             <div style={{ width: 280, flexShrink: 0 }}>
               <div style={{ borderRadius: 20, overflow: 'hidden', background: 'rgba(26,8,10,0.9)', border: '1px solid rgba(220,30,60,0.12)', backdropFilter: 'blur(20px)', position: 'sticky', top: 24 }}>
-                <img src={game.background_image} alt={game.name}
+                <img src={getGameCoverUrl(game.background_image)} alt={game.name}
                   style={{ width: '100%', height: 160, objectFit: 'cover' }} />
                 <div style={{ padding: 20 }}>
                   <h3 style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700, fontSize: 18, marginBottom: 16 }}>{game.name}</h3>

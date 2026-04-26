@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { Search, Star } from 'lucide-react'
+import { getGameCoverUrl } from '../api/games'
 
 const SkeletonRow = () => (
   <div style={{
@@ -93,7 +94,7 @@ const SearchDropdown = ({ query, results, isLoading, onSelect }) => {
           >
             {game.cover ? (
               <img
-                src={game.cover}
+                src={getGameCoverUrl(game.cover)}
                 alt={game.name}
                 style={{ width: 44, height: 44, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }}
               />

@@ -1,18 +1,20 @@
-import { useQuery, useQueries } from '@tanstack/react-query'
-import { fetchFeaturedGames, fetchPopularGames, searchGames, fetchGameDetail, fetchGameScreenshots } from '../api/games'
+import { useQuery } from '@tanstack/react-query'
+import { fetchFeaturedGames, fetchPopularGames, searchGames, fetchGameDetail, fetchGameScreenshots, fetchGamesByIds } from '../api/games'
 
 export const useFeaturedGames = () =>
   useQuery({
     queryKey: ['featured'],
     queryFn: fetchFeaturedGames,
-    staleTime: 10 * 60 * 1000,
+    staleTime: 30 * 60 * 1000,
+    gcTime: 2 * 60 * 60 * 1000,
   })
 
 export const usePopularGames = () =>
   useQuery({
     queryKey: ['popular'],
     queryFn: fetchPopularGames,
-    staleTime: 10 * 60 * 1000,
+    staleTime: 30 * 60 * 1000,
+    gcTime: 2 * 60 * 60 * 1000,
   })
 
 export const useSearchGames = (query) =>
@@ -20,6 +22,7 @@ export const useSearchGames = (query) =>
     queryKey: ['games', query],
     queryFn: () => searchGames(query),
     enabled: query.length >= 2,
+    staleTime: 15 * 60 * 1000,
   })
 
 export const useGameDetail = (id) =>
@@ -27,7 +30,8 @@ export const useGameDetail = (id) =>
     queryKey: ['game', String(id)],
     queryFn: () => fetchGameDetail(id),
     enabled: !!id,
-    staleTime: 30 * 60 * 1000,
+    staleTime: 24 * 60 * 60 * 1000,
+    gcTime: 24 * 60 * 60 * 1000,
   })
 
 export const useGameScreenshots = (id) =>
@@ -35,33 +39,29 @@ export const useGameScreenshots = (id) =>
     queryKey: ['screenshots', String(id)],
     queryFn: () => fetchGameScreenshots(id),
     enabled: !!id,
-    staleTime: 30 * 60 * 1000,
+    staleTime: 24 * 60 * 60 * 1000,
+    gcTime: 24 * 60 * 60 * 1000,
   })
 
 export const useGameDetailsBatch = (ids = []) => {
-  const normalizedIds = ids.map((id) => {
-    if (id === null || id === undefined) return null
-    return String(id)
-  })
-
+  const normalizedIds = ids.map((id) => (id === null || id === undefined ? null : Number(id)))
   const uniqueIds = [...new Set(normalizedIds.filter(Boolean))]
 
-  const results = useQueries({
-    queries: uniqueIds.map((id) => ({
-      queryKey: ['game', id],
-      queryFn: () => fetchGameDetail(id),
-      enabled: true,
-      staleTime: 30 * 60 * 1000,
-    }))
+  const query = useQuery({
+    queryKey: ['gamesBatch', uniqueIds.join(',')],
+    queryFn: () => fetchGamesByIds(uniqueIds),
+    enabled: uniqueIds.length > 0,
+    staleTime: 24 * 60 * 60 * 1000,
+    gcTime: 24 * 60 * 60 * 1000,
   })
 
-  const gameById = uniqueIds.reduce((acc, id, index) => {
-    acc[id] = results[index]?.data ?? null
+  const gameById = (query.data ?? []).reduce((acc, game) => {
+    if (game?.id) acc[Number(game.id)] = game
     return acc
   }, {})
 
   return {
     data: normalizedIds.map((id) => (id ? gameById[id] ?? null : null)),
-    isLoading: results.some(r => r.isLoading),
+    isLoading: query.isLoading,
   }
 }

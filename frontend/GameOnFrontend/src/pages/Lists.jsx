@@ -6,6 +6,7 @@ import { useMyList } from '../hooks/useLists'
 import { useGameDetailsBatch } from '../hooks/useGames'
 import { useWindowSize } from '../hooks/useWindowSize'
 import AddToListButton from '../components/AddToListButton'
+import { getGameCoverUrl } from '../api/games'
 
 const STATUS_CONFIG = {
   want_to_play: { label: 'Want to Play', color: '#a78bfa', bg: 'rgba(167,139,250,0.1)', border: 'rgba(167,139,250,0.2)' },
@@ -46,7 +47,7 @@ const Lists = () => {
     >
       {game.gameCover && (
         <div style={{ position: 'relative', height: isMobileLayout ? 90 : 110, overflow: 'hidden', borderRadius: '16px 16px 0 0' }}>
-          <img src={game.gameCover} alt={game.gameName}
+          <img src={getGameCoverUrl(game.gameCover)} alt={game.gameName}
             style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(26,8,10,1) 0%, transparent 60%)' }} />
         </div>

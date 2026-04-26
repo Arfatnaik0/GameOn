@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, Gamepad2 } from 'lucide-react'
 import GenreChip from './GenreChip'
 import { useWindowSize } from '../hooks/useWindowSize'
+import { getGameCoverUrl } from '../api/games'
 
 const HeroCarousel = ({ games }) => {
   const [current, setCurrent] = useState(0)
@@ -66,7 +67,7 @@ const HeroCarousel = ({ games }) => {
       {/* Background image */}
       <img
         key={game.id}
-        src={game.cover}
+        src={getGameCoverUrl(game.cover)}
         alt={game.name}
         style={{
           position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover',

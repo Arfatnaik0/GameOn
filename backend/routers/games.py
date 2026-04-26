@@ -4,12 +4,17 @@ from urllib.parse import urlparse
 
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import Response
+from pydantic import BaseModel, Field
 import os
 from services import rawg
 
 router = APIRouter(prefix="/games", tags=["games"])
 SEARCH_RATE_LIMIT_PER_MINUTE = int(os.getenv("SEARCH_RATE_LIMIT_PER_MINUTE", "60"))
 _search_rate_limit_hits = defaultdict(deque)
+
+
+class GameBatchRequest(BaseModel):
+    ids: list[int] = Field(default_factory=list, max_length=50)
 
 
 def _get_client_ip(request: Request) -> str:
@@ -115,9 +120,28 @@ async def proxy_game_image(url: str = Query(..., min_length=10, max_length=2000)
         content=upstream.content,
         media_type=content_type,
         headers={
-            "Cache-Control": "public, max-age=86400",
+            "Cache-Control": "public, max-age=2592000, immutable",
         },
     )
+
+
+@router.post("/batch")
+async def get_games_batch(body: GameBatchRequest):
+    unique_ids = []
+    seen = set()
+    for game_id in body.ids:
+        if game_id in seen:
+            continue
+        seen.add(game_id)
+        unique_ids.append(game_id)
+
+    games = await rawg.get_games_batch(unique_ids)
+    game_by_id = {
+        game.get("id"): game
+        for game in games
+        if game
+    }
+    return {"results": [game_by_id.get(game_id) for game_id in body.ids]}
 
 
 @router.get("/{game_id}")

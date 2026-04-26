@@ -16,7 +16,7 @@ export const fetchGameScreenshots = (id) =>
   client.get(`/games/${id}/screenshots`).then(res => res.data)
 
 export const fetchGamesByIds = (ids) =>
-  Promise.all(ids.map(id => client.get(`/games/${id}`).then(res => res.data)))
+  client.post('/games/batch', { ids }).then(res => res.data.results)
 
 export const getGameCoverUrl = (coverUrl) => {
   if (!coverUrl) return null

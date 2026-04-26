@@ -127,6 +127,7 @@ export const useSetReviewReaction = (session) => {
     mutationFn: ({ reviewId, reaction }) => setReviewReaction(reviewId, reaction, session),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['popularReviews'] })
+      queryClient.invalidateQueries({ queryKey: ['friendReviews'] })
       queryClient.invalidateQueries({ queryKey: ['reviews'] })
       queryClient.invalidateQueries({ queryKey: ['allReviews'] })
     },
@@ -140,6 +141,7 @@ export const useClearReviewReaction = (session) => {
     mutationFn: ({ reviewId }) => clearReviewReaction(reviewId, session),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['popularReviews'] })
+      queryClient.invalidateQueries({ queryKey: ['friendReviews'] })
       queryClient.invalidateQueries({ queryKey: ['reviews'] })
       queryClient.invalidateQueries({ queryKey: ['allReviews'] })
     },

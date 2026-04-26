@@ -5,6 +5,7 @@ import Login from './pages/Login'
 import GameDetail from './pages/GameDetail'
 import Profile from './pages/Profile'
 import Lists from './pages/Lists'
+import Socials from './pages/Socials'
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth()
@@ -28,6 +29,7 @@ const AppRoutes = () => (
     {/* Protected — must be signed in */}
     <Route path="/profile/:userId" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
     <Route path="/lists" element={<ProtectedRoute><Lists /></ProtectedRoute>} />
+    <Route path="/socials" element={<ProtectedRoute><Socials /></ProtectedRoute>} />
     <Route path="*" element={<Navigate to="/dashboard" replace />} />
   </Routes>
 )
