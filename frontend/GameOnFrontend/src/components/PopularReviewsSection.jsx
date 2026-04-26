@@ -4,14 +4,16 @@ import { ChevronLeft, ChevronRight, Star, User } from 'lucide-react'
 import { getGameCoverUrl } from '../api/games'
 import { usePopularReviews } from '../hooks/useReviews'
 import { useGameDetailsBatch } from '../hooks/useGames'
+import { useWindowSize } from '../hooks/useWindowSize'
 import ReviewReactionButtons from './ReviewReactionButtons'
 
 const PopularReviewsSection = ({ session }) => {
   const [page, setPage] = useState(1)
   const navigate = useNavigate()
+  const { isMobile, isTablet } = useWindowSize()
 
   const { data, isLoading } = usePopularReviews(page, 5, session)
-  const reviews = data?.results ?? []
+  const reviews = useMemo(() => data?.results ?? [], [data?.results])
   const totalPages = data?.total_pages ?? 1
 
   const gameIds = useMemo(() => reviews.map((review) => review.rawg_game_id), [reviews])
@@ -49,18 +51,18 @@ const PopularReviewsSection = ({ session }) => {
   return (
     <section
       style={{
-        borderRadius: 18,
-        padding: '18px 18px 10px',
+        borderRadius: isMobile ? 14 : 18,
+        padding: isMobile ? '14px 14px 8px' : '16px 16px 10px',
         border: '1px solid rgba(108,168,228,0.18)',
         background: 'linear-gradient(180deg, rgba(8,16,28,0.96), rgba(7,13,24,0.94))',
         boxShadow: '0 16px 46px rgba(0,0,0,0.45)',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-        <p style={{ color: 'rgba(180,205,236,0.9)', fontSize: 14, letterSpacing: 2.2, textTransform: 'uppercase' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
+        <p style={{ color: 'rgba(180,205,236,0.9)', fontSize: isMobile ? 11 : 12, letterSpacing: isMobile ? 1.2 : 1.8, textTransform: 'uppercase', fontWeight: 700 }}>
           Popular Reviews This Week
         </p>
-        <span style={{ color: 'rgba(180,205,236,0.7)', fontSize: 12 }}>
+        <span style={{ color: 'rgba(180,205,236,0.7)', fontSize: isMobile ? 10 : 11, flexShrink: 0 }}>
           Page {page} of {totalPages}
         </span>
       </div>
@@ -83,9 +85,9 @@ const PopularReviewsSection = ({ session }) => {
               onClick={() => handleOpenGame(review.gameId)}
               style={{
                 display: 'grid',
-                gridTemplateColumns: '74px 1fr',
-                gap: 12,
-                padding: '12px 0',
+                gridTemplateColumns: isMobile ? '58px 1fr' : '68px 1fr',
+                gap: isMobile ? 10 : 12,
+                padding: isMobile ? '10px 0' : '12px 0',
                 borderTop: index === 0 ? '1px solid rgba(108,168,228,0.2)' : '1px solid rgba(108,168,228,0.14)',
                 cursor: review.gameId ? 'pointer' : 'default',
               }}
@@ -94,41 +96,41 @@ const PopularReviewsSection = ({ session }) => {
                 <img
                   src={review.gameCover}
                   alt={review.gameName}
-                  style={{ width: 74, height: 98, borderRadius: 8, objectFit: 'cover', border: '1px solid rgba(255,255,255,0.1)' }}
+                  style={{ width: isMobile ? 58 : 68, height: isMobile ? 78 : 90, borderRadius: 8, objectFit: 'cover', border: '1px solid rgba(255,255,255,0.1)' }}
                 />
               ) : (
-                <div style={{ width: 74, height: 98, borderRadius: 8, background: 'rgba(255,255,255,0.06)' }} />
+                <div style={{ width: isMobile ? 58 : 68, height: isMobile ? 78 : 90, borderRadius: 8, background: 'rgba(255,255,255,0.06)' }} />
               )}
 
               <div style={{ minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
-                  <h3 style={{ fontFamily: 'Rajdhani, sans-serif', fontSize: 24, fontWeight: 700, color: '#fff', lineHeight: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 5, flexWrap: 'wrap' }}>
+                  <h3 style={{ fontFamily: 'Rajdhani, sans-serif', fontSize: isMobile ? 17 : isTablet ? 19 : 20, fontWeight: 700, color: '#fff', lineHeight: 1.15 }}>
                     {review.gameName}
                   </h3>
                   {review.gameReleasedYear && (
-                    <span style={{ fontSize: 12, color: 'rgba(200,221,245,0.7)' }}>{review.gameReleasedYear}</span>
+                    <span style={{ fontSize: isMobile ? 10 : 11, color: 'rgba(200,221,245,0.7)' }}>{review.gameReleasedYear}</span>
                   )}
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 7, flexWrap: 'wrap' }}>
                   {review.profiles?.avatar_url ? (
                     <img
                       src={review.profiles.avatar_url}
                       alt="avatar"
-                      style={{ width: 26, height: 26, borderRadius: '50%', objectFit: 'cover', border: '1px solid rgba(255,255,255,0.15)' }}
+                      style={{ width: isMobile ? 22 : 24, height: isMobile ? 22 : 24, borderRadius: '50%', objectFit: 'cover', border: '1px solid rgba(255,255,255,0.15)' }}
                     />
                   ) : (
-                    <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'rgba(255,255,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ width: isMobile ? 22 : 24, height: isMobile ? 22 : 24, borderRadius: '50%', background: 'rgba(255,255,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <User size={12} color="#fff" />
                     </div>
                   )}
-                  <span style={{ fontSize: 13, fontWeight: 600, color: 'rgba(220,235,255,0.9)' }}>
+                  <span style={{ fontSize: isMobile ? 12 : 13, fontWeight: 600, color: 'rgba(220,235,255,0.9)' }}>
                     {review.profiles?.username ?? 'Anonymous'}
                   </span>
                   {renderStars(review.rating)}
                 </div>
 
-                <p style={{ fontSize: 15, lineHeight: 1.55, color: 'rgba(208,222,245,0.88)', marginBottom: 10 }}>
+                <p style={{ fontSize: isMobile ? 13 : 14, lineHeight: 1.55, color: 'rgba(208,222,245,0.88)', marginBottom: 10 }}>
                   {review.review_text?.trim() || 'No written review.'}
                 </p>
 

@@ -252,7 +252,7 @@ const Dashboard = () => {
         </header>
 
         {/* Body */}
-        <main style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: isMobile ? '16px' : '20px 24px', display: 'flex', flexDirection: 'column', gap: isMobile ? 16 : 24 }}>
+        <main style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', overscrollBehavior: 'contain', WebkitOverflowScrolling: isMobile ? 'touch' : 'auto', scrollBehavior: 'auto', contain: 'layout paint', padding: isMobile ? '16px' : '20px 24px', display: 'flex', flexDirection: 'column', gap: isMobile ? 16 : 24 }}>
           {isLoading ? (
             <>
               <div style={{ height: isMobile ? 220 : 340, borderRadius: 20, background: 'rgba(255,255,255,0.04)' }} />
@@ -316,7 +316,7 @@ const Dashboard = () => {
               )}
 
               {/* Games section — always shows top 20 popular, never search results */}
-              <div style={{ paddingBottom: 24 }}>
+              <div style={{ paddingBottom: isMobile ? 2 : 4 }}>
                 <HorizontalScroller
                   title="Games"
                   games={popular?.results}

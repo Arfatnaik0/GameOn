@@ -1,4 +1,3 @@
-import { useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Star } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
@@ -6,36 +5,21 @@ import GenreChip from './GenreChip'
 import AddToListButton from './AddToListButton'
 
 const GameCard = ({ game, listEntries = [] }) => {
-  const cardRef = useRef(null)
   const navigate = useNavigate()
   const { session } = useAuth()
 
-  const handleMouseMove = (e) => {
-    const card = cardRef.current
-    if (!card) return
-    const rect = card.getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const y = e.clientY - rect.top
-    const rotateX = ((y - rect.height / 2) / rect.height) * -10
-    const rotateY = ((x - rect.width / 2) / rect.width) * 10
-    card.style.transform = `perspective(600px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(-6px) scale(1.03)`
-    card.style.boxShadow = `${-rotateY * 2}px ${rotateX * 2}px 40px rgba(0,0,0,0.7), 0 0 30px rgba(220,30,60,0.2)`
-  }
-
-  const handleMouseLeave = () => {
-    const card = cardRef.current
-    if (!card) return
-    card.style.transform = 'perspective(600px) rotateX(0) rotateY(0) translateY(0) scale(1)'
-    card.style.boxShadow = 'none'
-  }
-
   return (
     <div
-      ref={cardRef}
       onClick={() => navigate(`/game/${game.id}`)}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-      style={{ position: 'relative', flexShrink: 0, width: '200px', height: '260px', borderRadius: '16px', overflow: 'hidden', cursor: 'pointer', transition: 'transform 0.15s ease, box-shadow 0.15s ease', transformStyle: 'preserve-3d' }}
+      onMouseEnter={e => {
+        e.currentTarget.style.transform = 'translateY(-4px)'
+        e.currentTarget.style.boxShadow = '0 18px 38px rgba(0,0,0,0.42), 0 0 24px rgba(220,30,60,0.16)'
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.transform = 'translateY(0)'
+        e.currentTarget.style.boxShadow = 'none'
+      }}
+      style={{ position: 'relative', flexShrink: 0, width: '200px', height: '260px', borderRadius: '16px', overflow: 'hidden', cursor: 'pointer', transition: 'transform 0.18s ease, box-shadow 0.18s ease', willChange: 'transform' }}
     >
       <img src={game.cover} alt={game.name}
         style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />

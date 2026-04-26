@@ -2,15 +2,17 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Bell, Heart } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useMyLikeNotifications } from '../hooks/useReviews'
+import { useWindowSize } from '../hooks/useWindowSize'
 
 const ReviewNotificationsBell = ({ session }) => {
   const [open, setOpen] = useState(false)
   const panelRef = useRef(null)
   const navigate = useNavigate()
+  const { isMobile } = useWindowSize()
   const { data } = useMyLikeNotifications(session)
 
   const totalLikes = data?.total_likes ?? 0
-  const notifications = data?.notifications ?? []
+  const notifications = useMemo(() => data?.notifications ?? [], [data?.notifications])
   const unreadBadge = Math.min(totalLikes, 99)
 
   const previewItems = useMemo(() => notifications.slice(0, 6), [notifications])
@@ -78,14 +80,15 @@ const ReviewNotificationsBell = ({ session }) => {
       {open && (
         <div
           style={{
-            position: 'absolute',
-            top: 'calc(100% + 8px)',
-            right: 0,
-            width: 320,
-            maxHeight: 360,
+            position: isMobile ? 'fixed' : 'absolute',
+            top: isMobile ? 64 : 'calc(100% + 8px)',
+            right: isMobile ? 12 : 0,
+            left: isMobile ? 12 : 'auto',
+            width: isMobile ? 'auto' : 320,
+            maxHeight: isMobile ? 'min(420px, calc(100vh - 84px))' : 360,
             overflowY: 'auto',
-            borderRadius: 14,
-            zIndex: 140,
+            borderRadius: isMobile ? 16 : 14,
+            zIndex: 240,
             background: 'rgba(20,8,10,0.98)',
             border: '1px solid rgba(220,30,60,0.15)',
             boxShadow: '0 20px 60px rgba(0,0,0,0.7)',
