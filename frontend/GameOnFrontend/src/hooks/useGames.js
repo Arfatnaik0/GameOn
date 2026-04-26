@@ -39,17 +39,29 @@ export const useGameScreenshots = (id) =>
   })
 
 export const useGameDetailsBatch = (ids = []) => {
+  const normalizedIds = ids.map((id) => {
+    if (id === null || id === undefined) return null
+    return String(id)
+  })
+
+  const uniqueIds = [...new Set(normalizedIds.filter(Boolean))]
+
   const results = useQueries({
-    queries: ids.map(id => ({
-      queryKey: ['game', String(id)],
+    queries: uniqueIds.map((id) => ({
+      queryKey: ['game', id],
       queryFn: () => fetchGameDetail(id),
-      enabled: !!id,
+      enabled: true,
       staleTime: 30 * 60 * 1000,
     }))
   })
 
+  const gameById = uniqueIds.reduce((acc, id, index) => {
+    acc[id] = results[index]?.data ?? null
+    return acc
+  }, {})
+
   return {
-    data: results.map(r => r.data ?? null),
+    data: normalizedIds.map((id) => (id ? gameById[id] ?? null : null)),
     isLoading: results.some(r => r.isLoading),
   }
 }

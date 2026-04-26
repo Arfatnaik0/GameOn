@@ -6,6 +6,7 @@ import os
 from datetime import datetime, timedelta, timezone
 
 bearer_scheme = HTTPBearer()
+optional_bearer_scheme = HTTPBearer(auto_error=False)
 
 # Cache the JWKS with a TTL so keys refresh periodically.
 _jwks_cache = None
@@ -32,18 +33,18 @@ class AuthenticatedUser:
     def __init__(self, user_id: str):
         self.id = user_id
 
-async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)
-) -> AuthenticatedUser:
-    token = credentials.credentials
 
+def _decode_token_to_user(token: str) -> AuthenticatedUser:
     try:
         # Get unverified header to find the right key
         header = jwt.get_unverified_header(token)
         kid = header.get("kid")
 
         # Fetch JWKS and find matching key
-        jwks = await get_jwks()
+        jwks = _jwks_cache
+        if not jwks:
+            raise HTTPException(status_code=401, detail="Authentication failed")
+
         key = next((k for k in jwks["keys"] if k.get("kid") == kid), None)
 
         if not key:
@@ -65,6 +66,34 @@ async def get_current_user(
     except JWTError as e:
         print(f"JWT Error: {e}")
         raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)
+) -> AuthenticatedUser:
+    await get_jwks()
+    token = credentials.credentials
+
+    try:
+        return _decode_token_to_user(token)
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"Auth Error: {e}")
         raise HTTPException(status_code=401, detail="Authentication failed")
+
+
+async def get_optional_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(optional_bearer_scheme)
+) -> AuthenticatedUser | None:
+    if not credentials:
+        return None
+
+    await get_jwks()
+
+    try:
+        return _decode_token_to_user(credentials.credentials)
+    except HTTPException:
+        return None
+    except Exception as e:
+        print(f"Optional Auth Error: {e}")
+        return None

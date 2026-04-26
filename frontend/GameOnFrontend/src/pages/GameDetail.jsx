@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Star, Calendar, ChevronLeft, ChevronRight, PenLine, Edit2, LogIn, Sparkles } from 'lucide-react'
 import { useGameDetail, useGameScreenshots } from '../hooks/useGames'
 import { useGameReviews, useMyReviewForGame } from '../hooks/useReviews'
+import { useUserProfile } from '../hooks/useProfile'
 import { useAuth } from '../context/AuthContext'
 import { useWindowSize } from '../hooks/useWindowSize'
 import GenreChip from '../components/GenreChip'
@@ -23,8 +24,9 @@ const GameDetail = () => {
 
   const { data: game, isLoading: loadingGame } = useGameDetail(id)
   const { data: screenshots } = useGameScreenshots(id)
-  const { data: reviewsData, isLoading: loadingReviews } = useGameReviews(id)
+  const { data: reviewsData, isLoading: loadingReviews } = useGameReviews(id, session)
   const { data: myReviewData } = useMyReviewForGame(id, session)
+  const { data: profileData } = useUserProfile(user?.id)
 
   const shots = screenshots?.results ?? []
   const reviews = reviewsData?.results ?? []
@@ -55,8 +57,15 @@ const GameDetail = () => {
   const heroHeight = isMobile ? 320 : 480
 
   const createSnapshotPayload = ({ rating, reviewText }) => {
-    const fullName = user?.user_metadata?.full_name?.trim() || user?.user_metadata?.name?.trim() || 'Player'
-    const handle = user?.user_metadata?.preferred_username || user?.email?.split('@')?.[0] || 'player'
+    const fullName = profileData?.username?.trim()
+      || user?.user_metadata?.full_name?.trim()
+      || user?.user_metadata?.name?.trim()
+      || 'Player'
+    const handleBase = user?.user_metadata?.preferred_username?.trim()
+      || profileData?.username?.trim()
+      || user?.email?.split('@')?.[0]
+      || 'player'
+    const handle = handleBase.toLowerCase().replace(/\s+/g, '_')
     return {
       gameName: game.name,
       gameCover: game.background_image,
@@ -66,7 +75,7 @@ const GameDetail = () => {
       reviewText,
       userName: fullName,
       userHandle: `@${handle}`,
-      userAvatar: user?.user_metadata?.avatar_url,
+      userAvatar: profileData?.avatar_url || user?.user_metadata?.avatar_url || user?.user_metadata?.picture,
     }
   }
 
@@ -281,7 +290,7 @@ const GameDetail = () => {
               {loadingReviews ? (
                 <div style={{ height: 80, borderRadius: 12, background: 'rgba(255,255,255,0.04)' }} />
               ) : (
-                <ReviewList reviews={reviews} currentUserId={user?.id} />
+                <ReviewList reviews={reviews} currentUserId={user?.id} session={session} />
               )}
             </div>
           </div>

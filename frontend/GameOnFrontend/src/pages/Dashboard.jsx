@@ -10,11 +10,14 @@ import LibraryPanel from '../components/LibraryPanel'
 import StatsPanel from '../components/StatsPanel'
 import SettingsDrawer from '../components/SettingsDrawer'
 import GuestBanner from '../components/GuestBanner'
+import PopularReviewsSection from '../components/PopularReviewsSection'
+import ReviewNotificationsBell from '../components/ReviewNotificationsBell'
 import { useFeaturedGames, useSearchGames, usePopularGames } from '../hooks/useGames'
 import { useDebounce } from '../hooks/useDebounce'
 import { useAuth } from '../context/AuthContext'
 import { useMyReviewCount } from '../hooks/useReviews'
 import { useMyList } from '../hooks/useLists'
+import { useUserProfile } from '../hooks/useProfile'
 import { useWindowSize } from '../hooks/useWindowSize'
 import { usePWAInstall } from '../hooks/usePWAInstall'
 
@@ -23,6 +26,7 @@ const Dashboard = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [avatarLoadFailed, setAvatarLoadFailed] = useState(false)
   const debouncedQuery = useDebounce(query, 300)
   const { user, signOut, session } = useAuth()
   const dropdownRef = useRef(null)
@@ -36,9 +40,20 @@ const Dashboard = () => {
   const { data: searchResults, isFetching: isSearching } = useSearchGames(debouncedQuery)
   const { data: reviewCountData } = useMyReviewCount(session)
   const { data: listData } = useMyList(session)
+  const { data: profileData } = useUserProfile(user?.id)
 
   const reviewCount = reviewCountData?.count ?? 0
   const listEntries = listData?.results ?? []
+  const displayName = profileData?.username?.trim()
+    || user?.user_metadata?.full_name?.trim()
+    || user?.user_metadata?.name?.trim()
+    || 'Player'
+  const displayFirstName = displayName.split(' ')[0] || 'Player'
+  const avatarUrl = profileData?.avatar_url
+    || user?.user_metadata?.avatar_url
+    || user?.user_metadata?.picture
+    || null
+  const showAvatarImage = Boolean(avatarUrl) && !avatarLoadFailed
 
   const getGreeting = () => {
     const hour = new Date().getHours()
@@ -69,6 +84,10 @@ const Dashboard = () => {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
+  useEffect(() => {
+    setAvatarLoadFailed(false)
+  }, [avatarUrl])
+
   return (
     <div style={{ display: 'flex', height: '100vh', background: '#0a0608', overflow: 'hidden' }}>
       <Sidebar mobileOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
@@ -95,7 +114,7 @@ const Dashboard = () => {
             <div style={{ marginRight: 4, flexShrink: 0 }}>
               <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)' }}>{getGreeting()}, </span>
               <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>
-                {user?.user_metadata?.full_name?.split(' ')[0] ?? 'Guest'}
+                {user ? displayFirstName : 'Guest'}
               </span>
             </div>
           )}
@@ -133,24 +152,26 @@ const Dashboard = () => {
 
             {user ? (
               <>
+                <ReviewNotificationsBell session={session} />
                 <div ref={dropdownRef} style={{ position: 'relative' }}>
                   <div
                     onClick={() => setDropdownOpen(o => !o)}
                     style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 6 : 10, padding: isMobile ? '6px 10px' : '8px 14px', borderRadius: 12, background: 'rgba(255,255,255,0.04)', border: `1px solid ${dropdownOpen ? 'rgba(220,30,60,0.4)' : 'rgba(220,30,60,0.12)'}`, cursor: 'pointer', transition: 'border-color 0.2s', userSelect: 'none' }}
                     onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(220,30,60,0.4)'}
                     onMouseLeave={e => { if (!dropdownOpen) e.currentTarget.style.borderColor = 'rgba(220,30,60,0.12)' }}>
-                    {user?.user_metadata?.avatar_url ? (
-                      <img src={user.user_metadata.avatar_url} alt="avatar"
+                    {showAvatarImage ? (
+                      <img src={avatarUrl} alt="avatar"
+                        onError={() => setAvatarLoadFailed(true)}
                         style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover' }} />
                     ) : (
                       <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'linear-gradient(135deg, #dc1e3c, #7b2d8b)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#fff' }}>
-                        {user?.user_metadata?.full_name?.[0] ?? 'G'}
+                        {displayName?.[0]?.toUpperCase() ?? 'G'}
                       </div>
                     )}
                     {!isMobile && (
                       <div>
                         <p style={{ fontSize: 12, fontWeight: 600, color: '#fff', lineHeight: 1 }}>
-                          {user?.user_metadata?.full_name ?? 'Player'}
+                          {displayName}
                         </p>
                         <p style={{ fontSize: 10, color: '#8a5a62', lineHeight: 1, marginTop: 3 }}>
                           {user?.email ?? ''}
@@ -171,7 +192,7 @@ const Dashboard = () => {
                       boxShadow: '0 20px 60px rgba(0,0,0,0.7)',
                     }}>
                       <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                        <p style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>{user?.user_metadata?.full_name}</p>
+                        <p style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>{displayName}</p>
                         <p style={{ fontSize: 11, color: '#8a5a62', marginTop: 2 }}>{user?.email}</p>
                       </div>
                       {[
@@ -303,6 +324,8 @@ const Dashboard = () => {
                   listEntries={listEntries}
                 />
               </div>
+
+              <PopularReviewsSection session={session} />
             </>
           )}
         </main>

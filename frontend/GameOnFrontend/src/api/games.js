@@ -17,3 +17,24 @@ export const fetchGameScreenshots = (id) =>
 
 export const fetchGamesByIds = (ids) =>
   Promise.all(ids.map(id => client.get(`/games/${id}`).then(res => res.data)))
+
+export const getGameCoverUrl = (coverUrl) => {
+  if (!coverUrl) return null
+
+  const normalizedUrl = String(coverUrl).trim()
+  if (normalizedUrl.includes('/games/image-proxy?url=')) {
+    return normalizedUrl
+  }
+
+  const isRawgImage = /^https?:\/\/[^/]*rawg\.io\//i.test(normalizedUrl)
+  if (!isRawgImage) {
+    return normalizedUrl
+  }
+
+  const apiBase = String(client.defaults.baseURL || '').replace(/\/$/, '')
+  if (!apiBase) {
+    return normalizedUrl
+  }
+
+  return `${apiBase}/games/image-proxy?url=${encodeURIComponent(normalizedUrl)}`
+}

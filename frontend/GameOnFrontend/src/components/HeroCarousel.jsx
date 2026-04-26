@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, Gamepad2 } from 'lucide-react'
 import GenreChip from './GenreChip'
@@ -7,16 +7,28 @@ import { useWindowSize } from '../hooks/useWindowSize'
 const HeroCarousel = ({ games }) => {
   const [current, setCurrent] = useState(0)
   const [animating, setAnimating] = useState(false)
+  const animatingRef = useRef(false)
+  const animationTimeoutRef = useRef(null)
   const navigate = useNavigate()
   const { isMobile } = useWindowSize()
   const totalSlides = games?.length ?? 0
 
   const go = (index) => {
-    if (animating || totalSlides === 0) return
+    if (animatingRef.current || totalSlides === 0) return
+    animatingRef.current = true
     setAnimating(true)
     const nextIndex = ((index % totalSlides) + totalSlides) % totalSlides
     setCurrent(nextIndex)
-    setTimeout(() => setAnimating(false), 600)
+
+    if (animationTimeoutRef.current) {
+      clearTimeout(animationTimeoutRef.current)
+    }
+
+    animationTimeoutRef.current = setTimeout(() => {
+      animatingRef.current = false
+      setAnimating(false)
+      animationTimeoutRef.current = null
+    }, 600)
   }
 
   const prev = () => go(current === 0 ? totalSlides - 1 : current - 1)
@@ -27,6 +39,14 @@ const HeroCarousel = ({ games }) => {
     const timer = setInterval(next, 5000)
     return () => clearInterval(timer)
   }, [current, totalSlides])
+
+  useEffect(() => {
+    return () => {
+      if (animationTimeoutRef.current) {
+        clearTimeout(animationTimeoutRef.current)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     if (current >= totalSlides && totalSlides > 0) {

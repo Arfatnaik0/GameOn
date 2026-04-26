@@ -1,6 +1,7 @@
 import { Star, User } from 'lucide-react'
+import ReviewReactionButtons from './ReviewReactionButtons'
 
-const ReviewList = ({ reviews, currentUserId }) => {
+const ReviewList = ({ reviews, currentUserId, session }) => {
   if (!reviews?.length) return (
     <div style={{ textAlign: 'center', padding: '40px 0' }}>
       <p style={{ color: 'rgba(255,255,255,0.25)', fontSize: 14 }}>No reviews yet. Be the first!</p>
@@ -58,6 +59,10 @@ const ReviewList = ({ reviews, currentUserId }) => {
               {review.review_text}
             </p>
           )}
+
+          <div style={{ marginTop: 12, display: 'flex', justifyContent: 'flex-end' }}>
+            <ReviewReactionButtons review={review} session={session} compact />
+          </div>
         </div>
       ))}
     </div>

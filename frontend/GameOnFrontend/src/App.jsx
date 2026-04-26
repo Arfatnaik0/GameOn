@@ -5,7 +5,6 @@ import Login from './pages/Login'
 import GameDetail from './pages/GameDetail'
 import Profile from './pages/Profile'
 import Lists from './pages/Lists'
-import Reviews from './pages/Reviews'
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth()
@@ -23,7 +22,6 @@ const ProtectedRoute = ({ children }) => {
 const AppRoutes = () => (
   <Routes>
     <Route path="/login" element={<Login />}/>
-    <Route path="/reviews" element={<Reviews />} />
     {/* Public — guests can view */}
     <Route path="/dashboard" element={<Dashboard />} />
     <Route path="/game/:id" element={<GameDetail />} />

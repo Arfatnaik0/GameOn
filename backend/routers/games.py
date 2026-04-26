@@ -1,6 +1,9 @@
 from collections import defaultdict, deque
 from datetime import datetime, timedelta, timezone
-from fastapi import APIRouter, HTTPException, Request
+from urllib.parse import urlparse
+
+from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi.responses import Response
 import os
 from services import rawg
 
@@ -80,6 +83,41 @@ async def get_popular_games():
         for g in data["results"]
     ]
     return {"results": games}
+
+
+@router.get("/image-proxy")
+async def proxy_game_image(url: str = Query(..., min_length=10, max_length=2000)):
+    parsed = urlparse(url)
+    if parsed.scheme not in {"http", "https"}:
+        raise HTTPException(status_code=400, detail="Invalid image URL scheme")
+
+    host = (parsed.hostname or "").lower()
+    if not host.endswith("rawg.io"):
+        raise HTTPException(status_code=400, detail="Only RAWG image URLs are supported")
+
+    try:
+        upstream = await rawg.client.get(
+            url,
+            headers={"Accept": "image/*"},
+            follow_redirects=True,
+        )
+    except Exception:
+        raise HTTPException(status_code=502, detail="Failed to fetch upstream image")
+
+    if upstream.status_code >= 400:
+        raise HTTPException(status_code=502, detail="Upstream image request failed")
+
+    content_type = upstream.headers.get("content-type", "")
+    if not content_type.startswith("image/"):
+        raise HTTPException(status_code=415, detail="Upstream URL did not return an image")
+
+    return Response(
+        content=upstream.content,
+        media_type=content_type,
+        headers={
+            "Cache-Control": "public, max-age=86400",
+        },
+    )
 
 
 @router.get("/{game_id}")

@@ -3,11 +3,15 @@ import {
   fetchGameReviews,
   fetchMyReviewForGame,
   fetchMyReviewCount,
+  fetchMyLikeNotifications,
   createReview,
   updateReview,
   deleteReview,
   fetchAllReviews,
   fetchMyReviews,
+  fetchPopularReviews,
+  setReviewReaction,
+  clearReviewReaction,
 } from '../api/reviews'
 
 // --------------------
@@ -30,12 +34,20 @@ export const useAllReviews = (page = 1) =>
     keepPreviousData: true, // smooth pagination
   })
 
-export const useGameReviews = (gameId) =>
+export const useGameReviews = (gameId, session) =>
   useQuery({
-    queryKey: ['reviews', String(gameId)],
-    queryFn: () => fetchGameReviews(gameId),
+    queryKey: ['reviews', String(gameId), session?.user?.id ?? 'guest'],
+    queryFn: () => fetchGameReviews(gameId, session),
     enabled: !!gameId,
     staleTime: 2 * 60 * 1000, // 2 min
+  })
+
+export const usePopularReviews = (page = 1, pageSize = 5, session) =>
+  useQuery({
+    queryKey: ['popularReviews', page, pageSize, session?.user?.id ?? 'guest'],
+    queryFn: () => fetchPopularReviews(page, pageSize, session),
+    staleTime: 2 * 60 * 1000,
+    keepPreviousData: true,
   })
 
 export const useMyReviewForGame = (gameId, session) =>
@@ -52,6 +64,15 @@ export const useMyReviewCount = (session) =>
     queryFn: () => fetchMyReviewCount(session),
     enabled: !!session?.access_token,
     staleTime: 5 * 60 * 1000, // 5 min
+  })
+
+export const useMyLikeNotifications = (session) =>
+  useQuery({
+    queryKey: ['myLikeNotifications', session?.user?.id],
+    queryFn: () => fetchMyLikeNotifications(session),
+    enabled: !!session?.access_token,
+    staleTime: 30 * 1000,
+    refetchInterval: 60 * 1000,
   })
 
 // --------------------
@@ -94,6 +115,32 @@ export const useDeleteReview = (session, gameId) => {
       queryClient.invalidateQueries({ queryKey: ['reviews', String(gameId)] })
       queryClient.invalidateQueries({ queryKey: ['myReview', String(gameId)] })
       queryClient.invalidateQueries({ queryKey: ['reviewCount', session?.user?.id] })
+      queryClient.invalidateQueries({ queryKey: ['allReviews'] })
+    },
+  })
+}
+
+export const useSetReviewReaction = (session) => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ reviewId, reaction }) => setReviewReaction(reviewId, reaction, session),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['popularReviews'] })
+      queryClient.invalidateQueries({ queryKey: ['reviews'] })
+      queryClient.invalidateQueries({ queryKey: ['allReviews'] })
+    },
+  })
+}
+
+export const useClearReviewReaction = (session) => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ reviewId }) => clearReviewReaction(reviewId, session),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['popularReviews'] })
+      queryClient.invalidateQueries({ queryKey: ['reviews'] })
       queryClient.invalidateQueries({ queryKey: ['allReviews'] })
     },
   })

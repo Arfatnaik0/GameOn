@@ -1,15 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
-import html2canvas from 'html2canvas'
-import { X, Star, User, Download } from 'lucide-react'
+import { X, Star, User } from 'lucide-react'
 import CloudLogo from './CloudLogo'
 
 const ReviewRecapPopup = ({ open, onClose, payload }) => {
   const cardRef = useRef(null)
-  const [isDownloading, setIsDownloading] = useState(false)
   const [coverFailed, setCoverFailed] = useState(false)
+  const [avatarFailed, setAvatarFailed] = useState(false)
 
   useEffect(() => {
     setCoverFailed(false)
+    setAvatarFailed(false)
   }, [payload])
 
   if (!open || !payload) return null
@@ -27,48 +27,7 @@ const ReviewRecapPopup = ({ open, onClose, payload }) => {
   } = payload
 
   const year = released ? String(released).slice(0, 4) : 'N/A'
-
-  const handleDownload = async () => {
-    if (!cardRef.current || isDownloading) return
-
-    try {
-      setIsDownloading(true)
-      if (document.fonts?.ready) {
-        await document.fonts.ready
-      }
-
-      // Ensure layout is fully painted before capturing to avoid text offset in output.
-      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
-
-      const previousMaxHeight = cardRef.current.style.maxHeight
-      const previousOverflowY = cardRef.current.style.overflowY
-      cardRef.current.style.maxHeight = 'none'
-      cardRef.current.style.overflowY = 'visible'
-
-      let canvas
-      try {
-        canvas = await html2canvas(cardRef.current, {
-          backgroundColor: '#0e0a18',
-          scale: 2,
-          useCORS: true,
-          scrollX: 0,
-          scrollY: 0,
-          foreignObjectRendering: true,
-        })
-      } finally {
-        cardRef.current.style.maxHeight = previousMaxHeight
-        cardRef.current.style.overflowY = previousOverflowY
-      }
-
-      const fileSafeName = String(gameName || 'review').replace(/[^a-zA-Z0-9-_]/g, '_')
-      const link = document.createElement('a')
-      link.download = `${fileSafeName}_review_snapshot.png`
-      link.href = canvas.toDataURL('image/png')
-      link.click()
-    } finally {
-      setIsDownloading(false)
-    }
-  }
+  const hasValidAvatar = Boolean(userAvatar) && !avatarFailed
 
   return (
     <div
@@ -104,30 +63,7 @@ const ReviewRecapPopup = ({ open, onClose, payload }) => {
           <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', letterSpacing: 1.2, textTransform: 'uppercase' }}>
             Your Review Snapshot
           </span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <button
-              onClick={handleDownload}
-              disabled={isDownloading}
-              style={{
-                height: 30,
-                borderRadius: 10,
-                border: '1px solid rgba(220,30,60,0.35)',
-                background: 'rgba(220,30,60,0.16)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: isDownloading ? 'not-allowed' : 'pointer',
-                color: '#fff',
-                gap: 6,
-                fontSize: 11,
-                fontWeight: 600,
-                padding: '0 10px',
-                opacity: isDownloading ? 0.7 : 1,
-              }}
-            >
-              <Download size={12} />
-              {isDownloading ? 'Saving...' : 'Download'}
-            </button>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
             <button
               onClick={onClose}
               style={{
@@ -213,8 +149,13 @@ const ReviewRecapPopup = ({ open, onClose, payload }) => {
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            {userAvatar ? (
-              <img src={userAvatar} alt="avatar" style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover' }} />
+            {hasValidAvatar ? (
+              <img
+                src={userAvatar}
+                alt="avatar"
+                onError={() => setAvatarFailed(true)}
+                style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover' }}
+              />
             ) : (
               <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <User size={16} color="#fff" />
