@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, ChevronLeft, ChevronRight, Gamepad2, GripVertical, Library, Star } from 'lucide-react'
+import { ArrowLeft, ChevronLeft, ChevronRight, Gamepad2, GripVertical, Library, Search, Star, X } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useMyList, useUpdateListStatus } from '../hooks/useLists'
 import { useGameDetailsBatch } from '../hooks/useGames'
@@ -24,6 +24,7 @@ const Lists = () => {
   const { isMobile, isTablet } = useWindowSize()
   const isCompact = isMobile || isTablet
   const [activeTab, setActiveTab] = useState('want_to_play')
+  const [searchTerm, setSearchTerm] = useState('')
   const [optimisticStatuses, setOptimisticStatuses] = useState({})
   const [draggedGameId, setDraggedGameId] = useState(null)
   const [draggedFromStatus, setDraggedFromStatus] = useState(null)
@@ -38,6 +39,8 @@ const Lists = () => {
   const updateStatus = useUpdateListStatus(session)
   const entries = useMemo(() => listData?.results ?? [], [listData?.results])
   const isDragging = !!draggedGameId
+  const normalizedSearch = searchTerm.trim().toLowerCase()
+  const isSearchActive = normalizedSearch.length > 0
 
   useEffect(() => {
     if (!entries.length && !Object.keys(optimisticStatuses).length) return
@@ -64,6 +67,31 @@ const Lists = () => {
     })
   ), [entries, optimisticStatuses])
 
+  const allIds = useMemo(() => effectiveEntries.map(entry => entry.rawg_game_id), [effectiveEntries])
+  const {
+    data: allGameDetails,
+    isLoading: loadingSearchDetails,
+    isFetching: fetchingSearchDetails,
+  } = useGameDetailsBatch(isSearchActive ? allIds : [])
+
+  const searchGameByRawgId = useMemo(() => {
+    const map = {}
+    allIds.forEach((id, index) => {
+      map[id] = allGameDetails[index]
+    })
+    return map
+  }, [allGameDetails, allIds])
+
+  const filteredEntries = useMemo(() => {
+    if (!isSearchActive) return effectiveEntries
+
+    return effectiveEntries.filter((entry) => {
+      const game = searchGameByRawgId[entry.rawg_game_id]
+      const name = game?.name?.toLowerCase()
+      return name ? name.includes(normalizedSearch) : false
+    })
+  }, [effectiveEntries, isSearchActive, normalizedSearch, searchGameByRawgId])
+
   const groupedEntries = useMemo(() => {
     const groups = {
       want_to_play: [],
@@ -71,12 +99,12 @@ const Lists = () => {
       played: [],
     }
 
-    effectiveEntries.forEach((entry) => {
+    filteredEntries.forEach((entry) => {
       if (groups[entry.status]) groups[entry.status].push(entry)
     })
 
     return groups
-  }, [effectiveEntries])
+  }, [filteredEntries])
 
   useEffect(() => {
     setPages((current) => {
@@ -139,6 +167,9 @@ const Lists = () => {
   }
 
   const totalGames = entries.length
+  const filteredTotal = filteredEntries.length
+  const displayTotal = isSearchActive ? filteredTotal : totalGames
+  const isSearchLoading = isSearchActive && (loadingSearchDetails || fetchingSearchDetails)
 
   const resetDragState = () => {
     setDraggedGameId(null)
@@ -462,7 +493,7 @@ const Lists = () => {
           Game's List
         </h1>
         <span style={{ marginLeft: 'auto', fontSize: 12, color: 'rgba(255,255,255,0.38)', flexShrink: 0 }}>
-          {totalGames} {totalGames === 1 ? 'game' : 'games'}
+          {displayTotal} {displayTotal === 1 ? 'game' : 'games'}
         </span>
       </div>
 
@@ -492,6 +523,64 @@ const Lists = () => {
           </div>
         </div>
 
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18, flexWrap: 'wrap' }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '8px 12px',
+            borderRadius: 12,
+            border: '1px solid rgba(255,255,255,0.12)',
+            background: 'rgba(255,255,255,0.035)',
+            minWidth: isMobile ? '100%' : 280,
+            flex: isMobile ? '1 1 100%' : '0 1 auto',
+          }}>
+            <Search size={14} color="rgba(255,255,255,0.55)" />
+            <input
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder="Search your list"
+              style={{
+                background: 'transparent',
+                border: 'none',
+                outline: 'none',
+                color: '#fff',
+                fontSize: 13,
+                width: '100%',
+              }}
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 22,
+                  height: 22,
+                  borderRadius: 999,
+                  border: 'none',
+                  background: 'rgba(255,255,255,0.08)',
+                  color: '#fff',
+                  cursor: 'pointer',
+                }}
+              >
+                <X size={12} />
+              </button>
+            )}
+          </div>
+          {isSearchActive && (
+            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.46)' }}>
+              Showing {filteredTotal} of {totalGames}
+            </span>
+          )}
+          {isSearchLoading && (
+            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>
+              Loading matches...
+            </span>
+          )}
+        </div>
+
         {loadingList ? (
           <div style={{ display: 'grid', gridTemplateColumns: isCompact ? '1fr' : 'repeat(3, minmax(0, 1fr))', gap: 18 }}>
             {[1, 2, 3].map(i => (
@@ -509,6 +598,11 @@ const Lists = () => {
             >
               Browse Games
             </button>
+          </div>
+        ) : isSearchActive && filteredTotal === 0 ? (
+          <div style={{ textAlign: 'center', padding: isMobile ? '48px 12px' : '64px 0', borderRadius: 18, border: '1px dashed rgba(255,255,255,0.18)', background: 'rgba(255,255,255,0.02)' }}>
+            <p style={{ fontSize: 16, color: 'rgba(255,255,255,0.7)', marginBottom: 6, fontWeight: 700 }}>No matches found</p>
+            <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.38)' }}>Try a different title or clear the search.</p>
           </div>
         ) : isCompact ? (
           <>
