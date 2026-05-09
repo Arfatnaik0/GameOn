@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, ChevronLeft, ChevronRight, Gamepad2, Library, Star } from 'lucide-react'
+import { ArrowLeft, ChevronLeft, ChevronRight, Gamepad2, GripVertical, Library, Star } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { useMyList } from '../hooks/useLists'
+import { useMyList, useUpdateListStatus } from '../hooks/useLists'
 import { useGameDetailsBatch } from '../hooks/useGames'
 import { useWindowSize } from '../hooks/useWindowSize'
 import AddToListButton from '../components/AddToListButton'
@@ -24,6 +24,10 @@ const Lists = () => {
   const { isMobile, isTablet } = useWindowSize()
   const isCompact = isMobile || isTablet
   const [activeTab, setActiveTab] = useState('want_to_play')
+  const [optimisticStatuses, setOptimisticStatuses] = useState({})
+  const [draggedGameId, setDraggedGameId] = useState(null)
+  const [draggedFromStatus, setDraggedFromStatus] = useState(null)
+  const [dragOverStatus, setDragOverStatus] = useState(null)
   const [pages, setPages] = useState({
     want_to_play: 1,
     playing: 1,
@@ -31,7 +35,34 @@ const Lists = () => {
   })
 
   const { data: listData, isLoading: loadingList } = useMyList(session)
+  const updateStatus = useUpdateListStatus(session)
   const entries = useMemo(() => listData?.results ?? [], [listData?.results])
+  const isDragging = !!draggedGameId
+
+  useEffect(() => {
+    if (!entries.length && !Object.keys(optimisticStatuses).length) return
+
+    setOptimisticStatuses((current) => {
+      let changed = false
+      const next = { ...current }
+
+      entries.forEach((entry) => {
+        if (next[entry.rawg_game_id] === entry.status) {
+          delete next[entry.rawg_game_id]
+          changed = true
+        }
+      })
+
+      return changed ? next : current
+    })
+  }, [entries, optimisticStatuses])
+
+  const effectiveEntries = useMemo(() => (
+    entries.map((entry) => {
+      const nextStatus = optimisticStatuses[entry.rawg_game_id]
+      return nextStatus ? { ...entry, status: nextStatus } : entry
+    })
+  ), [entries, optimisticStatuses])
 
   const groupedEntries = useMemo(() => {
     const groups = {
@@ -40,12 +71,12 @@ const Lists = () => {
       played: [],
     }
 
-    entries.forEach((entry) => {
+    effectiveEntries.forEach((entry) => {
       if (groups[entry.status]) groups[entry.status].push(entry)
     })
 
     return groups
-  }, [entries])
+  }, [effectiveEntries])
 
   useEffect(() => {
     setPages((current) => {
@@ -109,6 +140,56 @@ const Lists = () => {
 
   const totalGames = entries.length
 
+  const resetDragState = () => {
+    setDraggedGameId(null)
+    setDraggedFromStatus(null)
+    setDragOverStatus(null)
+  }
+
+  const moveGameToStatus = async (game, nextStatus) => {
+    if (!game?.rawg_game_id || !nextStatus || game.status === nextStatus) {
+      resetDragState()
+      return
+    }
+
+    const previousStatus = game.status
+    setOptimisticStatuses((current) => ({ ...current, [game.rawg_game_id]: nextStatus }))
+    resetDragState()
+
+    try {
+      await updateStatus.mutateAsync({ rawgGameId: game.rawg_game_id, status: nextStatus })
+    } catch (error) {
+      setOptimisticStatuses((current) => ({ ...current, [game.rawg_game_id]: previousStatus }))
+    }
+  }
+
+  const handleDragStart = (event, game) => {
+    if (isCompact) return
+
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('text/plain', String(game.rawg_game_id))
+    setDraggedGameId(game.rawg_game_id)
+    setDraggedFromStatus(game.status)
+  }
+
+  const handleDragEnd = () => {
+    resetDragState()
+  }
+
+  const handleLaneDragOver = (event, status) => {
+    if (isCompact || !draggedGameId) return
+    event.preventDefault()
+    event.dataTransfer.dropEffect = draggedFromStatus === status ? 'none' : 'move'
+    if (dragOverStatus !== status) setDragOverStatus(status)
+  }
+
+  const handleLaneDrop = async (event, status) => {
+    if (isCompact || !draggedGameId) return
+    event.preventDefault()
+    const game = effectiveEntries.find((entry) => entry.rawg_game_id === draggedGameId)
+    await moveGameToStatus(game, status)
+  }
+
   const renderPagination = (status) => {
     const total = groupedEntries[status].length
     const totalPages = Math.max(1, Math.ceil(total / LIST_PAGE_SIZE))
@@ -167,8 +248,13 @@ const Lists = () => {
 
   const renderGameCard = (game, config) => (
     <article
-      key={game.id}
-      onClick={() => navigate(`/game/${game.gameId}`)}
+      key={game.rawg_game_id}
+      draggable={!isCompact}
+      onDragStart={event => handleDragStart(event, game)}
+      onDragEnd={handleDragEnd}
+      onClick={() => {
+        if (!isDragging) navigate(`/game/${game.gameId}`)
+      }}
       style={{
         display: 'grid',
         gridTemplateColumns: isCompact ? '74px 1fr' : '86px 1fr',
@@ -176,10 +262,11 @@ const Lists = () => {
         minHeight: isCompact ? 96 : 110,
         padding: 10,
         borderRadius: 14,
-        background: 'rgba(255,255,255,0.035)',
-        border: '1px solid rgba(255,255,255,0.07)',
+        background: draggedGameId === game.rawg_game_id ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.035)',
+        border: draggedGameId === game.rawg_game_id ? `1px solid ${config.border}` : '1px solid rgba(255,255,255,0.07)',
         cursor: 'pointer',
-        transition: 'border-color 0.2s, background 0.2s, transform 0.2s',
+        transition: 'border-color 0.2s, background 0.2s, transform 0.2s, opacity 0.2s',
+        opacity: draggedGameId === game.rawg_game_id ? 0.55 : 1,
       }}
       onMouseEnter={e => {
         e.currentTarget.style.borderColor = config.border
@@ -207,6 +294,25 @@ const Lists = () => {
           </div>
         )}
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(10,6,8,0.74), transparent 60%)' }} />
+        {!isCompact && (
+          <div style={{
+            position: 'absolute',
+            top: 8,
+            right: 8,
+            width: 28,
+            height: 28,
+            borderRadius: 999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'rgba(10,6,8,0.68)',
+            border: '1px solid rgba(255,255,255,0.12)',
+            color: 'rgba(255,255,255,0.72)',
+            backdropFilter: 'blur(8px)',
+          }}>
+            <GripVertical size={14} />
+          </div>
+        )}
       </div>
 
       <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 8 }}>
@@ -239,7 +345,7 @@ const Lists = () => {
           </div>
         </div>
         <div onClick={e => e.stopPropagation()}>
-          <AddToListButton gameId={game.gameId} session={session} dropUp listEntries={entries} />
+          <AddToListButton gameId={game.gameId} session={session} dropUp listEntries={effectiveEntries} />
         </div>
       </div>
     </article>
@@ -254,39 +360,84 @@ const Lists = () => {
 
     return (
       <section key={status} style={{ minWidth: 0 }}>
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          marginBottom: 12,
-          paddingBottom: 10,
-          borderBottom: `1px solid ${config.border}`,
-        }}>
-          <div style={{ width: 10, height: 10, borderRadius: '50%', background: config.color, boxShadow: `0 0 12px ${config.color}` }} />
-          <div style={{ minWidth: 0 }}>
-            <h2 style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 800, fontSize: 18, color: '#fff', lineHeight: 1 }}>
-              {config.label}
-            </h2>
-            <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.32)', marginTop: 3 }}>
-              Page {page} of {totalPages}
-            </p>
+        <div
+          onDragOver={event => handleLaneDragOver(event, status)}
+          onDragEnter={() => {
+            if (!isCompact && draggedGameId) setDragOverStatus(status)
+          }}
+          onDragLeave={(event) => {
+            if (event.currentTarget === event.target) setDragOverStatus((current) => (current === status ? null : current))
+          }}
+          onDrop={event => handleLaneDrop(event, status)}
+          style={{
+            minHeight: 240,
+            padding: 16,
+            borderRadius: 24,
+            background: dragOverStatus === status
+              ? `linear-gradient(180deg, ${config.bg}, rgba(255,255,255,0.03))`
+              : 'rgba(255,255,255,0.02)',
+            border: dragOverStatus === status
+              ? `1px solid ${config.color}`
+              : `1px solid ${config.border}`,
+            boxShadow: dragOverStatus === status
+              ? `0 18px 45px ${config.bg}`
+              : 'none',
+            transition: 'background 0.2s, border-color 0.2s, box-shadow 0.2s, transform 0.2s',
+            transform: dragOverStatus === status ? 'translateY(-3px)' : 'translateY(0)',
+          }}
+        >
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            marginBottom: 12,
+            paddingBottom: 10,
+            borderBottom: `1px solid ${config.border}`,
+          }}>
+            <div style={{ width: 10, height: 10, borderRadius: '50%', background: config.color, boxShadow: `0 0 12px ${config.color}` }} />
+            <div style={{ minWidth: 0 }}>
+              <h2 style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 800, fontSize: 18, color: '#fff', lineHeight: 1 }}>
+                {config.label}
+              </h2>
+              <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.32)', marginTop: 3 }}>
+                Page {page} of {totalPages}
+              </p>
+            </div>
+            <span style={{ marginLeft: 'auto', fontSize: 12, fontWeight: 800, padding: '4px 9px', borderRadius: 999, background: config.bg, border: `1px solid ${config.border}`, color: config.color }}>
+              {total}
+            </span>
           </div>
-          <span style={{ marginLeft: 'auto', fontSize: 12, fontWeight: 800, padding: '4px 9px', borderRadius: 999, background: config.bg, border: `1px solid ${config.border}`, color: config.color }}>
-            {total}
-          </span>
+
+          {games.length === 0 ? (
+            <div style={{ minHeight: 140, borderRadius: 16, border: `1px dashed ${config.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: 18 }}>
+              <p style={{ fontSize: 12, color: dragOverStatus === status ? config.color : 'rgba(255,255,255,0.26)' }}>
+                {dragOverStatus === status ? `Drop here to mark as ${config.label.toLowerCase()}` : 'No games here yet'}
+              </p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {games.map(game => renderGameCard(game, config))}
+            </div>
+          )}
+
+          {!isCompact && draggedGameId && draggedFromStatus !== status && (
+            <div style={{
+              marginTop: 12,
+              padding: '10px 12px',
+              borderRadius: 14,
+              border: `1px dashed ${dragOverStatus === status ? config.color : config.border}`,
+              background: dragOverStatus === status ? config.bg : 'rgba(255,255,255,0.02)',
+              color: dragOverStatus === status ? config.color : 'rgba(255,255,255,0.46)',
+              fontSize: 12,
+              fontWeight: 700,
+              textAlign: 'center',
+            }}>
+              Drop here to move into {config.label}
+            </div>
+          )}
+
+          {renderPagination(status)}
         </div>
-
-        {games.length === 0 ? (
-          <div style={{ minHeight: 140, borderRadius: 16, border: `1px dashed ${config.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: 18 }}>
-            <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.26)' }}>No games here yet</p>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {games.map(game => renderGameCard(game, config))}
-          </div>
-        )}
-
-        {renderPagination(status)}
       </section>
     )
   }
@@ -324,6 +475,11 @@ const Lists = () => {
             <h2 style={{ fontFamily: 'Rajdhani, sans-serif', fontSize: isMobile ? 28 : 36, lineHeight: 1, fontWeight: 800, color: '#fff' }}>
               Track what matters next
             </h2>
+            {!isCompact && (
+              <p style={{ marginTop: 8, fontSize: 12, color: 'rgba(255,255,255,0.36)' }}>
+                Drag a card across columns to update its status instantly.
+              </p>
+            )}
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {STATUS_KEYS.map((status) => {

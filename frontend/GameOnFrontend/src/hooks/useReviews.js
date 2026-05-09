@@ -14,6 +14,90 @@ import {
   clearReviewReaction,
 } from '../api/reviews'
 
+const REACTION_QUERY_KEYS = [
+  ['popularReviews'],
+  ['friendReviews'],
+  ['reviews'],
+  ['allReviews'],
+]
+
+const applyReactionToReview = (review, nextReaction) => {
+  if (!review) return review
+
+  const currentReaction = review.current_user_reaction ?? null
+  if (currentReaction === nextReaction) return review
+
+  let likeCount = review.like_count ?? 0
+  let dislikeCount = review.dislike_count ?? 0
+
+  if (currentReaction === 'like') likeCount = Math.max(0, likeCount - 1)
+  if (currentReaction === 'dislike') dislikeCount = Math.max(0, dislikeCount - 1)
+
+  if (nextReaction === 'like') likeCount += 1
+  if (nextReaction === 'dislike') dislikeCount += 1
+
+  return {
+    ...review,
+    like_count: likeCount,
+    dislike_count: dislikeCount,
+    current_user_reaction: nextReaction,
+  }
+}
+
+const updateReviewInCache = (cachedData, reviewId, nextReaction) => {
+  if (!cachedData) return cachedData
+
+  if (Array.isArray(cachedData)) {
+    return cachedData.map((review) => (
+      review?.id === reviewId ? applyReactionToReview(review, nextReaction) : review
+    ))
+  }
+
+  if (Array.isArray(cachedData.results)) {
+    return {
+      ...cachedData,
+      results: cachedData.results.map((review) => (
+        review?.id === reviewId ? applyReactionToReview(review, nextReaction) : review
+      )),
+    }
+  }
+
+  return cachedData
+}
+
+const optimisticReactToReview = async (queryClient, reviewId, nextReaction) => {
+  await Promise.all(
+    REACTION_QUERY_KEYS.map((queryKey) => queryClient.cancelQueries({ queryKey }))
+  )
+
+  const snapshots = REACTION_QUERY_KEYS.map((queryKey) => [
+    queryKey,
+    queryClient.getQueriesData({ queryKey }),
+  ])
+
+  REACTION_QUERY_KEYS.forEach((queryKey) => {
+    queryClient.setQueriesData({ queryKey }, (cachedData) => (
+      updateReviewInCache(cachedData, reviewId, nextReaction)
+    ))
+  })
+
+  return { snapshots }
+}
+
+const restoreReactionSnapshots = (queryClient, context) => {
+  context?.snapshots?.forEach(([, entries]) => {
+    entries.forEach(([queryKey, data]) => {
+      queryClient.setQueryData(queryKey, data)
+    })
+  })
+}
+
+const invalidateReactionQueries = (queryClient) => {
+  REACTION_QUERY_KEYS.forEach((queryKey) => {
+    queryClient.invalidateQueries({ queryKey })
+  })
+}
+
 // --------------------
 // QUERIES
 // --------------------
@@ -125,11 +209,12 @@ export const useSetReviewReaction = (session) => {
 
   return useMutation({
     mutationFn: ({ reviewId, reaction }) => setReviewReaction(reviewId, reaction, session),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['popularReviews'] })
-      queryClient.invalidateQueries({ queryKey: ['friendReviews'] })
-      queryClient.invalidateQueries({ queryKey: ['reviews'] })
-      queryClient.invalidateQueries({ queryKey: ['allReviews'] })
+    onMutate: async ({ reviewId, reaction }) => optimisticReactToReview(queryClient, reviewId, reaction),
+    onError: (_error, _variables, context) => {
+      restoreReactionSnapshots(queryClient, context)
+    },
+    onSettled: () => {
+      invalidateReactionQueries(queryClient)
     },
   })
 }
@@ -139,11 +224,12 @@ export const useClearReviewReaction = (session) => {
 
   return useMutation({
     mutationFn: ({ reviewId }) => clearReviewReaction(reviewId, session),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['popularReviews'] })
-      queryClient.invalidateQueries({ queryKey: ['friendReviews'] })
-      queryClient.invalidateQueries({ queryKey: ['reviews'] })
-      queryClient.invalidateQueries({ queryKey: ['allReviews'] })
+    onMutate: async ({ reviewId }) => optimisticReactToReview(queryClient, reviewId, null),
+    onError: (_error, _variables, context) => {
+      restoreReactionSnapshots(queryClient, context)
+    },
+    onSettled: () => {
+      invalidateReactionQueries(queryClient)
     },
   })
 }
