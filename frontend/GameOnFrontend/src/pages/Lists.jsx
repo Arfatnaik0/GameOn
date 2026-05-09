@@ -8,12 +8,12 @@ import { useWindowSize } from '../hooks/useWindowSize'
 import AddToListButton from '../components/AddToListButton'
 import { getGameCoverUrl } from '../api/games'
 
-const LIST_PAGE_SIZE = 10
+const LIST_PAGE_SIZE = 5
 
 const STATUS_CONFIG = {
-  want_to_play: { label: 'Want to Play', shortLabel: 'Want', color: '#a78bfa', bg: 'rgba(167,139,250,0.1)', border: 'rgba(167,139,250,0.24)' },
-  playing: { label: 'Playing', shortLabel: 'Playing', color: '#34d399', bg: 'rgba(52,211,153,0.1)', border: 'rgba(52,211,153,0.24)' },
-  played: { label: 'Played', shortLabel: 'Played', color: '#dc1e3c', bg: 'rgba(220,30,60,0.1)', border: 'rgba(220,30,60,0.24)' },
+  want_to_play: { label: 'Want to Play', shortLabel: 'Want', color: '#a78bfa', bg: 'rgba(167,139,250,0.1)' },
+  playing: { label: 'Playing', shortLabel: 'Playing', color: '#34d399', bg: 'rgba(52,211,153,0.1)' },
+  played: { label: 'Played', shortLabel: 'Played', color: '#dc1e3c', bg: 'rgba(220,30,60,0.1)' },
 }
 
 const STATUS_KEYS = Object.keys(STATUS_CONFIG)
@@ -376,9 +376,7 @@ const Lists = () => {
             background: dragOverStatus === status
               ? `linear-gradient(180deg, ${config.bg}, rgba(255,255,255,0.03))`
               : 'rgba(255,255,255,0.02)',
-            border: dragOverStatus === status
-              ? `1px solid ${config.color}`
-              : `1px solid ${config.border}`,
+            
             boxShadow: dragOverStatus === status
               ? `0 18px 45px ${config.bg}`
               : 'none',
