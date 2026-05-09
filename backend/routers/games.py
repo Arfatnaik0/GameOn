@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 import os
-from services import rawg
+from services import rawg, store_prices
 
 router = APIRouter(prefix="/games", tags=["games"])
 SEARCH_RATE_LIMIT_PER_MINUTE = int(os.getenv("SEARCH_RATE_LIMIT_PER_MINUTE", "60"))
@@ -147,6 +147,12 @@ async def get_games_batch(body: GameBatchRequest):
 @router.get("/{game_id}")
 async def get_game(game_id: int):
     return await rawg.get_game(game_id)
+
+
+@router.get("/{game_id}/prices")
+async def get_game_prices(game_id: int, country: str = Query("US", min_length=2, max_length=2)):
+    game = await rawg.get_game(game_id)
+    return await store_prices.get_game_prices(game, country=country)
 
 
 @router.get("/{game_id}/screenshots")

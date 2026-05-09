@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { fetchFeaturedGames, fetchPopularGames, searchGames, fetchGameDetail, fetchGameScreenshots, fetchGamesByIds } from '../api/games'
+import { fetchFeaturedGames, fetchPopularGames, searchGames, fetchGameDetail, fetchGamePrices, fetchGameScreenshots, fetchGamesByIds } from '../api/games'
 
 export const useFeaturedGames = () =>
   useQuery({
@@ -41,6 +41,15 @@ export const useGameScreenshots = (id) =>
     enabled: !!id,
     staleTime: 24 * 60 * 60 * 1000,
     gcTime: 24 * 60 * 60 * 1000,
+  })
+
+export const useGamePrices = (id, country = 'US') =>
+  useQuery({
+    queryKey: ['gamePrices', String(id), country],
+    queryFn: () => fetchGamePrices(id, country),
+    enabled: !!id,
+    staleTime: 60 * 60 * 1000,
+    gcTime: 2 * 60 * 60 * 1000,
   })
 
 export const useGameDetailsBatch = (ids = []) => {

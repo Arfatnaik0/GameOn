@@ -12,6 +12,9 @@ export const searchGames = (query, page = 1) =>
 export const fetchGameDetail = (id) =>
   client.get(`/games/${id}`).then(res => res.data)
 
+export const fetchGamePrices = (id, country = 'US') =>
+  client.get(`/games/${id}/prices`, { params: { country } }).then(res => res.data)
+
 export const fetchGameScreenshots = (id) =>
   client.get(`/games/${id}/screenshots`).then(res => res.data)
 

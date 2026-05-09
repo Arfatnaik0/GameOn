@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Star, Calendar, ChevronLeft, ChevronRight, PenLine, Edit2, LogIn, Sparkles } from 'lucide-react'
-import { useGameDetail, useGameScreenshots } from '../hooks/useGames'
+import { ArrowLeft, BadgeDollarSign, Calendar, ChevronLeft, ChevronRight, Edit2, ExternalLink, LogIn, PenLine, Sparkles, Star } from 'lucide-react'
+import { useGameDetail, useGamePrices, useGameScreenshots } from '../hooks/useGames'
 import { getGameCoverUrl } from '../api/games'
 import { useGameReviews, useMyReviewForGame } from '../hooks/useReviews'
 import { useUserProfile } from '../hooks/useProfile'
@@ -24,6 +24,7 @@ const GameDetail = () => {
   const [reviewPopupPayload, setReviewPopupPayload] = useState(null)
 
   const { data: game, isLoading: loadingGame } = useGameDetail(id)
+  const { data: priceBoard, isLoading: loadingPrices } = useGamePrices(id, 'US')
   const { data: screenshots } = useGameScreenshots(id)
   const { data: reviewsData, isLoading: loadingReviews } = useGameReviews(id, session)
   const { data: myReviewData } = useMyReviewForGame(id, session)
@@ -32,6 +33,7 @@ const GameDetail = () => {
   const shots = screenshots?.results ?? []
   const reviews = reviewsData?.results ?? []
   const myReview = myReviewData?.review ?? null
+  const storePrices = priceBoard?.stores ?? []
 
   const prevShot = () => setScreenshotIndex(i => (i === 0 ? shots.length - 1 : i - 1))
   const nextShot = () => setScreenshotIndex(i => (i === shots.length - 1 ? 0 : i + 1))
@@ -54,6 +56,12 @@ const GameDetail = () => {
   const avgRating = reviews.length > 0
     ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
     : null
+  const priceStatusStyles = {
+    priced: { color: '#7dd3fc', bg: 'rgba(125,211,252,0.12)', border: 'rgba(125,211,252,0.24)', label: 'Live' },
+    free: { color: '#86efac', bg: 'rgba(134,239,172,0.12)', border: 'rgba(134,239,172,0.24)', label: 'Free' },
+    unavailable: { color: '#fda4af', bg: 'rgba(251,113,133,0.12)', border: 'rgba(251,113,133,0.22)', label: 'Limited' },
+    not_listed: { color: 'rgba(255,255,255,0.52)', bg: 'rgba(255,255,255,0.05)', border: 'rgba(255,255,255,0.08)', label: 'Missing' },
+  }
 
   const heroHeight = isMobile ? 320 : 480
 
@@ -232,6 +240,125 @@ const GameDetail = () => {
                 </div>
               </div>
             )}
+
+            <div style={{ marginBottom: 40 }}>
+              <div style={{ display: 'flex', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'space-between', gap: 12, marginBottom: 16, flexDirection: isMobile ? 'column' : 'row' }}>
+                <div>
+                  <p style={{ color: '#7dd3fc', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1.6, fontWeight: 800, marginBottom: 6 }}>Store Pulse</p>
+                  <h2 style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700, fontSize: isMobile ? 18 : 22 }}>Compare Store Prices</h2>
+                  <p style={{ marginTop: 6, fontSize: 12, color: 'rgba(255,255,255,0.42)' }}>
+                    Snapshot for the US store region. Prices can shift by edition, region, or storefront timing.
+                  </p>
+                </div>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 12px', borderRadius: 999, background: 'rgba(125,211,252,0.08)', border: '1px solid rgba(125,211,252,0.18)', color: '#d7f2ff', fontSize: 12, fontWeight: 700 }}>
+                  <BadgeDollarSign size={14} />
+                  {loadingPrices ? 'Fetching prices' : `${storePrices.filter(store => store.has_price).length} live stores`}
+                </div>
+              </div>
+
+              {loadingPrices ? (
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
+                  {[1, 2, 3, 4].map((item) => (
+                    <div key={item} style={{ height: 148, borderRadius: 18, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }} />
+                  ))}
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
+                  {storePrices.map((store) => {
+                    const visual = priceStatusStyles[store.status] ?? priceStatusStyles.unavailable
+                    return (
+                      <article
+                        key={store.store_key}
+                        style={{
+                          position: 'relative',
+                          overflow: 'hidden',
+                          borderRadius: 18,
+                          padding: 16,
+                          background: `linear-gradient(180deg, ${visual.bg}, rgba(255,255,255,0.025))`,
+                          border: `1px solid ${visual.border}`,
+                          boxShadow: '0 18px 40px rgba(0,0,0,0.2)',
+                        }}
+                      >
+                        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at top right, rgba(255,255,255,0.08), transparent 42%)', pointerEvents: 'none' }} />
+                        <div style={{ position: 'relative', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 22 }}>
+                          <div>
+                            <p style={{ fontFamily: 'Rajdhani, sans-serif', fontSize: 22, lineHeight: 1, fontWeight: 800, color: '#fff', marginBottom: 6 }}>
+                              {store.store_name}
+                            </p>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 8px', borderRadius: 999, background: visual.bg, border: `1px solid ${visual.border}`, color: visual.color, fontSize: 11, fontWeight: 800 }}>
+                              <span style={{ width: 7, height: 7, borderRadius: '50%', background: visual.color }} />
+                              {visual.label}
+                            </span>
+                          </div>
+                          {store.discount_percent > 0 && (
+                            <div style={{ padding: '6px 9px', borderRadius: 12, background: 'rgba(220,30,60,0.14)', border: '1px solid rgba(220,30,60,0.24)', color: '#fecdd3', fontSize: 11, fontWeight: 800 }}>
+                              -{store.discount_percent}%
+                            </div>
+                          )}
+                        </div>
+
+                        <div style={{ position: 'relative', marginBottom: 16 }}>
+                          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+                            <span style={{ fontFamily: 'Rajdhani, sans-serif', fontSize: 34, lineHeight: 1, fontWeight: 800, color: '#fff' }}>
+                              {store.current_price_text || 'Unavailable'}
+                            </span>
+                            {store.original_price_text && store.original_price_text !== store.current_price_text && (
+                              <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.36)', textDecoration: 'line-through' }}>
+                                {store.original_price_text}
+                              </span>
+                            )}
+                          </div>
+                          <p style={{ marginTop: 8, minHeight: 34, fontSize: 12, lineHeight: 1.45, color: 'rgba(255,255,255,0.5)' }}>
+                            {store.note || 'Live store pricing'}
+                          </p>
+                        </div>
+
+                        {store.url ? (
+                          <a
+                            href={store.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            style={{
+                              position: 'relative',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 8,
+                              padding: '10px 14px',
+                              borderRadius: 12,
+                              border: `1px solid ${visual.border}`,
+                              background: 'rgba(255,255,255,0.05)',
+                              color: '#fff',
+                              fontSize: 12,
+                              fontWeight: 700,
+                              textDecoration: 'none',
+                            }}
+                          >
+                            Open Store
+                            <ExternalLink size={13} />
+                          </a>
+                        ) : (
+                          <div style={{
+                            position: 'relative',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            padding: '10px 14px',
+                            borderRadius: 12,
+                            border: '1px solid rgba(255,255,255,0.08)',
+                            background: 'rgba(255,255,255,0.03)',
+                            color: 'rgba(255,255,255,0.34)',
+                            fontSize: 12,
+                            fontWeight: 700,
+                          }}>
+                            Not linked for this game
+                          </div>
+                        )}
+                      </article>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
 
             {/* Description */}
             {game.description_raw && (
