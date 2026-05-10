@@ -1,6 +1,6 @@
-# GameOn 🎮
+# GameOn
 
-Full-stack game discovery + review platform powered by RAWG API, Supabase, and FastAPI.
+Full-stack game discovery + review + game price aggregator platform powered by RAWG API, Supabase, and FastAPI.
 
 ---
 
