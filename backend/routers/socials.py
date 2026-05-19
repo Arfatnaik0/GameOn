@@ -213,7 +213,7 @@ async def get_friend_reviews(
         .range(offset, offset + page_size - 1)\
         .execute()
 
-    enriched = enrich_reviews_with_reactions(result.data or [], current_user.id)
+    enriched = await enrich_reviews_with_reactions(result.data or [], current_user.id)
     total = result.count or 0
 
     return {

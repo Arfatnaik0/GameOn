@@ -1,3 +1,4 @@
+import asyncio
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from typing import Optional, Literal
@@ -9,7 +10,29 @@ from db import supabase, supabase_admin
 router = APIRouter(prefix="/reviews", tags=["reviews"])
 
 ACHIEVEMENT_TARGETS = [5, 10, 25, 50, 100]
-POPULAR_REVIEW_CANDIDATE_LIMIT = max(50, int(os.getenv("POPULAR_REVIEW_CANDIDATE_LIMIT", "400")))
+POPULAR_REVIEW_CANDIDATE_LIMIT = max(50, int(os.getenv("POPULAR_REVIEW_CANDIDATE_LIMIT", "100")))
+
+# --- Feed caching (TTL-based, in-memory) ---
+POPULAR_FEED_CACHE_TTL = int(os.getenv("POPULAR_FEED_CACHE_TTL", "300"))  # 5 min
+RECENT_FEED_CACHE_TTL = int(os.getenv("RECENT_FEED_CACHE_TTL", "60"))    # 1 min
+
+_popular_cache = {"data": None, "expires_at": None, "user_id": None}
+_recent_cache = {"data": None, "expires_at": None, "user_id": None}
+
+
+def _is_cache_valid(cache: dict) -> bool:
+    if cache["data"] is None:
+        return False
+    if cache["expires_at"] is None:
+        return False
+    return datetime.now(timezone.utc) < cache["expires_at"]
+
+
+def _clear_expired(cache: dict) -> None:
+    if not _is_cache_valid(cache):
+        cache["data"] = None
+        cache["expires_at"] = None
+        cache["user_id"] = None
 
 
 
@@ -36,7 +59,7 @@ def get_latest_achievement_target(review_count: int) -> Optional[int]:
     return latest
 
 
-def enrich_reviews_with_reactions(reviews: list, current_user_id: Optional[str] = None) -> list:
+async def enrich_reviews_with_reactions(reviews: list, current_user_id: Optional[str] = None) -> list:
     if not reviews:
         return []
 
@@ -44,34 +67,44 @@ def enrich_reviews_with_reactions(reviews: list, current_user_id: Optional[str] 
     if not review_ids:
         return reviews
 
-    reaction_data = []
-    try:
-        reaction_rows = supabase_admin.table("review_reactions") \
-            .select("review_id, user_id, reaction") \
-            .in_("review_id", review_ids) \
-            .execute()
-        reaction_data = reaction_rows.data or []
-    except Exception as e:
-        # Keep review feeds available even if reactions table is not ready yet.
-        print(f"Review reaction aggregation skipped: {e}")
+    # Parallelize reactions and reviewer-count queries
+    async def _fetch_reactions():
+        try:
+            reaction_rows = supabase_admin.table("review_reactions") \
+                .select("review_id, user_id, reaction") \
+                .in_("review_id", review_ids) \
+                .execute()
+            return reaction_rows.data or []
+        except Exception as e:
+            print(f"Review reaction aggregation skipped: {e}")
+            return []
 
-    counts_by_review = {review_id: {"like": 0, "dislike": 0} for review_id in review_ids}
-    user_reaction_by_review = {}
-
-    reviewer_ids = list({review.get("user_id") for review in reviews if review.get("user_id")})
-    review_count_by_user = {reviewer_id: 0 for reviewer_id in reviewer_ids}
-    if reviewer_ids:
+    async def _fetch_review_counts():
+        reviewer_ids = list({review.get("user_id") for review in reviews if review.get("user_id")})
+        if not reviewer_ids:
+            return {reviewer_id: 0 for reviewer_id in reviewer_ids}
         try:
             review_count_rows = supabase_admin.table("reviews") \
                 .select("user_id") \
                 .in_("user_id", reviewer_ids) \
                 .execute()
+            counts = {reviewer_id: 0 for reviewer_id in reviewer_ids}
             for row in review_count_rows.data or []:
                 reviewer_id = row.get("user_id")
-                if reviewer_id in review_count_by_user:
-                    review_count_by_user[reviewer_id] += 1
+                if reviewer_id in counts:
+                    counts[reviewer_id] += 1
+            return counts
         except Exception as e:
             print(f"Review achievement aggregation skipped: {e}")
+            return {reviewer_id: 0 for reviewer_id in reviewer_ids}
+
+    reaction_data, review_count_by_user = await asyncio.gather(
+        _fetch_reactions(),
+        _fetch_review_counts(),
+    )
+
+    counts_by_review = {review_id: {"like": 0, "dislike": 0} for review_id in review_ids}
+    user_reaction_by_review = {}
 
     for row in reaction_data:
         review_id = row.get("review_id")
@@ -115,7 +148,7 @@ async def get_reviews_for_game(game_id: int, current_user: Optional[Authenticate
         .order("created_at", desc=True)\
         .execute()
 
-    enriched = enrich_reviews_with_reactions(
+    enriched = await enrich_reviews_with_reactions(
         result.data or [],
         current_user.id if current_user else None,
     )
@@ -316,6 +349,21 @@ async def get_popular_reviews(
 ):
     page = max(1, page)
     page_size = max(1, min(page_size, 20))
+
+    # Check cache first (cache key includes user_id for reaction enrichment)
+    cache_user_id = current_user.id if current_user else None
+    if _is_cache_valid(_popular_cache) and _popular_cache["user_id"] == cache_user_id:
+        cached = _popular_cache["data"]
+        offset = (page - 1) * page_size
+        paged = cached["results"][offset: offset + page_size]
+        return {
+            "results": paged,
+            "total": cached["total"],
+            "page": page,
+            "page_size": page_size,
+            "total_pages": cached["total_pages"],
+        }
+
     weekly_cutoff = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
 
     result = supabase.table("reviews")\
@@ -325,11 +373,12 @@ async def get_popular_reviews(
         .range(0, POPULAR_REVIEW_CANDIDATE_LIMIT - 1)\
         .execute()
 
-    enriched = enrich_reviews_with_reactions(
+    enriched = await enrich_reviews_with_reactions(
         result.data or [],
-        current_user.id if current_user else None,
+        cache_user_id,
     )
 
+    # Sort by like_count desc, then score desc, then recency
     ranked = sorted(
         enriched,
         key=lambda review: (
@@ -345,6 +394,15 @@ async def get_popular_reviews(
     paged = ranked[offset: offset + page_size]
     total_pages = max(1, -(-total // page_size))
 
+    # Cache the full ranked list (not paged) so subsequent page requests hit cache
+    _popular_cache["data"] = {
+        "results": ranked,
+        "total": total,
+        "total_pages": total_pages,
+    }
+    _popular_cache["expires_at"] = datetime.now(timezone.utc) + timedelta(seconds=POPULAR_FEED_CACHE_TTL)
+    _popular_cache["user_id"] = cache_user_id
+
     return {
         "results": paged,
         "total": total,
@@ -359,6 +417,19 @@ async def get_all_reviews(
     page_size: int = 20,
     current_user: Optional[AuthenticatedUser] = Depends(get_optional_user)
 ):
+    cache_user_id = current_user.id if current_user else None
+
+    # Check cache (only cache page 1 to keep it simple)
+    if page == 1 and _is_cache_valid(_recent_cache) and _recent_cache["user_id"] == cache_user_id:
+        cached = _recent_cache["data"]
+        return {
+            "results": cached["results"],
+            "total": cached["total"],
+            "page": page,
+            "page_size": page_size,
+            "total_pages": cached["total_pages"],
+        }
+
     offset = (page - 1) * page_size
 
     result = supabase.table("reviews")\
@@ -367,10 +438,20 @@ async def get_all_reviews(
         .range(offset, offset + page_size - 1)\
         .execute()
 
-    enriched = enrich_reviews_with_reactions(
+    enriched = await enrich_reviews_with_reactions(
         result.data or [],
-        current_user.id if current_user else None,
+        cache_user_id,
     )
+
+    # Cache page 1 results
+    if page == 1:
+        _recent_cache["data"] = {
+            "results": enriched,
+            "total": result.count,
+            "total_pages": -(-result.count // page_size),
+        }
+        _recent_cache["expires_at"] = datetime.now(timezone.utc) + timedelta(seconds=RECENT_FEED_CACHE_TTL)
+        _recent_cache["user_id"] = cache_user_id
 
     return {
         "results": enriched,
