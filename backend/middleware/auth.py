@@ -3,7 +3,10 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError
 import httpx
 import os
+import logging
 from datetime import datetime, timedelta, timezone
+
+logger = logging.getLogger(__name__)
 
 bearer_scheme = HTTPBearer()
 optional_bearer_scheme = HTTPBearer(auto_error=False)
@@ -64,7 +67,7 @@ def _decode_token_to_user(token: str) -> AuthenticatedUser:
         return AuthenticatedUser(user_id=user_id)
 
     except JWTError as e:
-        print(f"JWT Error: {e}")
+        logger.warning("JWT verification failed: %s", e)
         raise HTTPException(status_code=401, detail="Invalid or expired token")
 
 async def get_current_user(
@@ -78,7 +81,7 @@ async def get_current_user(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Auth Error: {e}")
+        logger.error("Authentication error: %s", e)
         raise HTTPException(status_code=401, detail="Authentication failed")
 
 
@@ -95,5 +98,5 @@ async def get_optional_user(
     except HTTPException:
         return None
     except Exception as e:
-        print(f"Optional Auth Error: {e}")
+        logger.debug("Optional auth failed: %s", e)
         return None

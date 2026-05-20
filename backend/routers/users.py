@@ -1,21 +1,24 @@
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 from middleware.auth import get_current_user, AuthenticatedUser
 from gotrue.errors import AuthApiError
 import os
 import dotenv
 from db import supabase, supabase_admin
+import logging
 
 dotenv.load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/users", tags=["users"])
 
 
 
 class ProfileUpdate(BaseModel):
-    username: Optional[str] = None
-    bio: Optional[str] = None
+    username: Optional[str] = Field(None, min_length=2, max_length=30, pattern=r'^[a-zA-Z0-9_.-]+$')
+    bio: Optional[str] = Field(None, max_length=500)
 
 
 @router.get("/me")
@@ -43,14 +46,15 @@ async def delete_my_account(user: AuthenticatedUser = Depends(get_current_user))
         supabase_admin.auth.admin.delete_user(user.id)
         return {"message": "Account deleted"}
     except AuthApiError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.error("Account deletion failed: %s", e)
+        raise HTTPException(status_code=400, detail="Account deletion failed")
     except Exception as e:
         raise HTTPException(status_code=500, detail="Failed to delete account")
 
 
 @router.get("/{user_id}")
 async def get_user_profile(user_id: str):
-    response = supabase.table("profiles").select("*").eq("id", user_id).single().execute()
+    response = supabase.table("profiles").select("id, username, avatar_url, bio, created_at").eq("id", user_id).single().execute()
     if not response.data:
         raise HTTPException(status_code=404, detail="Profile not found")
     return response.data

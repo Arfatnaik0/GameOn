@@ -29,6 +29,10 @@ FEED_CACHE_TTL_SECONDS = _get_feed_cache_ttl_seconds()
 SEARCH_CACHE_TTL_SECONDS = int(os.getenv("SEARCH_CACHE_TTL_SECONDS", "3600"))
 SCREENSHOT_CACHE_TTL_SECONDS = int(os.getenv("SCREENSHOT_CACHE_TTL_SECONDS", "86400"))
 
+MAX_SEARCH_CACHE_SIZE = 500
+MAX_SCREENSHOTS_CACHE_SIZE = 500
+MAX_GAME_REFRESH_LOCKS = 200
+
 _featured_cache = {"data": None, "expires_at": None}
 _popular_cache = {"data": None, "expires_at": None}
 _search_cache = {}
@@ -88,10 +92,19 @@ def _ttl_cache_get(cache: dict, key):
     return item["data"]
 
 
-def _ttl_cache_set(cache: dict, key, data: dict, ttl_seconds: int) -> None:
+def _ttl_cache_set(cache: dict, key, data: dict, ttl_seconds: int, max_size: int = 500) -> None:
+    # Evict expired entries first
+    now = datetime.now(timezone.utc)
+    expired_keys = [k for k, v in cache.items() if now >= v["expires_at"]]
+    for k in expired_keys:
+        cache.pop(k, None)
+    # If still over capacity, evict oldest entries
+    while len(cache) >= max_size:
+        oldest_key = next(iter(cache))
+        cache.pop(oldest_key, None)
     cache[key] = {
         "data": data,
-        "expires_at": datetime.now(timezone.utc) + timedelta(seconds=ttl_seconds),
+        "expires_at": now + timedelta(seconds=ttl_seconds),
     }
 
 
@@ -162,6 +175,8 @@ async def _refresh_game_cache(game_id: int) -> None:
             await asyncio.to_thread(_upsert_game_sync, game_id, data)
     finally:
         _background_game_refreshes.discard(game_id)
+        if len(_game_refresh_locks) > MAX_GAME_REFRESH_LOCKS:
+            _game_refresh_locks.pop(game_id, None)
 
 
 async def get_game(game_id: int) -> dict:
@@ -244,7 +259,7 @@ async def get_game_screenshots(game_id: int) -> dict:
         return cached
 
     data = await _get(f"/games/{game_id}/screenshots")
-    _ttl_cache_set(_screenshots_cache, game_id, data, SCREENSHOT_CACHE_TTL_SECONDS)
+    _ttl_cache_set(_screenshots_cache, game_id, data, SCREENSHOT_CACHE_TTL_SECONDS, MAX_SCREENSHOTS_CACHE_SIZE)
     return data
 
 
@@ -265,7 +280,7 @@ async def search_games(query: str, page: int = 1) -> dict:
     )
     if data.get("results"):
         _run_background(_cache_games(data["results"]))
-    _ttl_cache_set(_search_cache, cache_key, data, SEARCH_CACHE_TTL_SECONDS)
+    _ttl_cache_set(_search_cache, cache_key, data, SEARCH_CACHE_TTL_SECONDS, MAX_SEARCH_CACHE_SIZE)
     return data
 
 

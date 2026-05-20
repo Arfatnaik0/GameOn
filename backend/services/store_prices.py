@@ -25,6 +25,8 @@ PRICE_REQUEST_HEADERS = {
     "Accept-Language": "en-US,en;q=0.9",
 }
 
+MAX_PRICE_CACHE_SIZE = 500
+
 _price_cache = {}
 
 
@@ -39,9 +41,18 @@ def _cache_get(cache_key: tuple[int, str]):
 
 
 def _cache_set(cache_key: tuple[int, str], data: dict) -> None:
+    # Evict expired entries first
+    now = datetime.now(timezone.utc)
+    expired_keys = [k for k, v in _price_cache.items() if now >= v["expires_at"]]
+    for k in expired_keys:
+        _price_cache.pop(k, None)
+    # If still over capacity, evict oldest entries
+    while len(_price_cache) >= MAX_PRICE_CACHE_SIZE:
+        oldest_key = next(iter(_price_cache))
+        _price_cache.pop(oldest_key, None)
     _price_cache[cache_key] = {
         "data": data,
-        "expires_at": datetime.now(timezone.utc) + timedelta(seconds=PRICE_CACHE_TTL_SECONDS),
+        "expires_at": now + timedelta(seconds=PRICE_CACHE_TTL_SECONDS),
     }
 
 

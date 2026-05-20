@@ -97,7 +97,7 @@ async def proxy_game_image(url: str = Query(..., min_length=10, max_length=2000)
         raise HTTPException(status_code=400, detail="Invalid image URL scheme")
 
     host = (parsed.hostname or "").lower()
-    if not host.endswith("rawg.io"):
+    if not (host == "rawg.io" or host.endswith(".rawg.io")):
         raise HTTPException(status_code=400, detail="Only RAWG image URLs are supported")
 
     try:

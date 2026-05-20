@@ -1,23 +1,23 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+from typing import Literal
+import logging
 from middleware.auth import get_current_user, AuthenticatedUser
 import os
 from db import supabase, supabase_admin
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/lists", tags=["lists"])
 
 
 class ListEntry(BaseModel):
     rawg_game_id: int
-    status: str
-
-    def validate_status(self):
-        if self.status not in ('want_to_play', 'playing', 'played'):
-            raise ValueError("Invalid status")
+    status: Literal['want_to_play', 'playing', 'played']
 
 
 class StatusUpdate(BaseModel):
-    status: str
+    status: Literal['want_to_play', 'playing', 'played']
 
 
 @router.get("/me")
@@ -42,8 +42,6 @@ async def get_game_status(rawg_game_id: int, current_user: AuthenticatedUser = D
 
 @router.post("/")
 async def add_to_list(body: ListEntry, current_user: AuthenticatedUser = Depends(get_current_user)):
-    if body.status not in ('want_to_play', 'playing', 'played'):
-        raise HTTPException(status_code=400, detail="Invalid status")
     try:
         result = supabase_admin.table("user_game_lists").insert({
             "user_id": current_user.id,
@@ -52,13 +50,12 @@ async def add_to_list(body: ListEntry, current_user: AuthenticatedUser = Depends
         }).execute()
         return {"entry": result.data[0]}
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.error("List insert error: %s", e)
+        raise HTTPException(status_code=400, detail="Failed to add to list")
 
 
 @router.put("/{rawg_game_id}")
 async def update_status(rawg_game_id: int, body: StatusUpdate, current_user: AuthenticatedUser = Depends(get_current_user)):
-    if body.status not in ('want_to_play', 'playing', 'played'):
-        raise HTTPException(status_code=400, detail="Invalid status")
     result = supabase_admin.table("user_game_lists")\
         .update({"status": body.status})\
         .eq("user_id", current_user.id)\

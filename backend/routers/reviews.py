@@ -1,4 +1,6 @@
 import asyncio
+import logging
+from collections import defaultdict, deque
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from typing import Optional, Literal
@@ -11,6 +13,22 @@ router = APIRouter(prefix="/reviews", tags=["reviews"])
 
 ACHIEVEMENT_TARGETS = [5, 10, 25, 50, 100]
 POPULAR_REVIEW_CANDIDATE_LIMIT = max(50, int(os.getenv("POPULAR_REVIEW_CANDIDATE_LIMIT", "100")))
+
+logger = logging.getLogger(__name__)
+
+_review_write_rate_limits: dict[str, deque] = defaultdict(deque)
+REVIEW_WRITE_RATE_LIMIT_PER_MINUTE = 10
+
+
+def _enforce_review_write_rate_limit(user_id: str) -> None:
+    now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(minutes=1)
+    hits = _review_write_rate_limits[user_id]
+    while hits and hits[0] < cutoff:
+        hits.popleft()
+    if len(hits) >= REVIEW_WRITE_RATE_LIMIT_PER_MINUTE:
+        raise HTTPException(status_code=429, detail="Too many requests. Try again in a minute.")
+    hits.append(now)
 
 # --- Feed caching (TTL-based, in-memory) ---
 POPULAR_FEED_CACHE_TTL = int(os.getenv("POPULAR_FEED_CACHE_TTL", "300"))  # 5 min
@@ -39,12 +57,12 @@ def _clear_expired(cache: dict) -> None:
 class ReviewCreate(BaseModel):
     rawg_game_id: int
     rating: int = Field(..., ge=1, le=10)
-    review_text: Optional[str] = None
+    review_text: Optional[str] = Field(None, max_length=5000)
 
 
 class ReviewUpdate(BaseModel):
     rating: int = Field(..., ge=1, le=10)
-    review_text: Optional[str] = None
+    review_text: Optional[str] = Field(None, max_length=5000)
 
 
 class ReviewReactionUpdate(BaseModel):
@@ -76,7 +94,7 @@ async def enrich_reviews_with_reactions(reviews: list, current_user_id: Optional
                 .execute()
             return reaction_rows.data or []
         except Exception as e:
-            print(f"Review reaction aggregation skipped: {e}")
+            logger.warning("Review reaction aggregation skipped: %s", e)
             return []
 
     async def _fetch_review_counts():
@@ -95,7 +113,7 @@ async def enrich_reviews_with_reactions(reviews: list, current_user_id: Optional
                     counts[reviewer_id] += 1
             return counts
         except Exception as e:
-            print(f"Review achievement aggregation skipped: {e}")
+            logger.warning("Review achievement aggregation skipped: %s", e)
             return {reviewer_id: 0 for reviewer_id in reviewer_ids}
 
     reaction_data, review_count_by_user = await asyncio.gather(
@@ -198,7 +216,7 @@ async def get_my_like_notifications(current_user: AuthenticatedUser = Depends(ge
         like_rows = likes_result.data or []
     except Exception as e:
         # Table might not be provisioned yet; return safe empty notifications.
-        print(f"Like notifications aggregation skipped: {e}")
+        logger.warning("Like notifications aggregation skipped: %s", e)
         return {
             "total_likes": 0,
             "review_count": len(my_reviews),
@@ -268,6 +286,7 @@ async def get_my_review_for_game(game_id: int, current_user: AuthenticatedUser =
 
 @router.post("/")
 async def create_review(body: ReviewCreate, current_user: AuthenticatedUser = Depends(get_current_user)):
+    _enforce_review_write_rate_limit(current_user.id)
     try:
         result = supabase_admin.table("reviews").insert({
             "user_id": current_user.id,
@@ -277,8 +296,8 @@ async def create_review(body: ReviewCreate, current_user: AuthenticatedUser = De
         }).execute()
         return {"review": result.data[0]}
     except Exception as e:
-        print(f"Review insert error: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.error("Review insert error: %s", e)
+        raise HTTPException(status_code=400, detail="Failed to create review")
 
 
 @router.put("/{review_id}")
@@ -299,6 +318,7 @@ async def set_review_reaction(
     body: ReviewReactionUpdate,
     current_user: AuthenticatedUser = Depends(get_current_user)
 ):
+    _enforce_review_write_rate_limit(current_user.id)
     review = supabase.table("reviews")\
         .select("id")\
         .eq("id", review_id)\

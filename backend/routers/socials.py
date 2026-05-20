@@ -1,3 +1,8 @@
+import uuid
+import logging
+from collections import defaultdict, deque
+from datetime import datetime, timedelta, timezone
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import Optional
@@ -6,7 +11,23 @@ from db import supabase_admin
 from middleware.auth import AuthenticatedUser, get_current_user
 from routers.reviews import enrich_reviews_with_reactions
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/socials", tags=["socials"])
+
+_friend_request_rate_limits: dict[str, deque] = defaultdict(deque)
+FRIEND_REQUEST_RATE_LIMIT_PER_MINUTE = 10
+
+
+def _enforce_friend_request_rate_limit(user_id: str) -> None:
+    now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(minutes=1)
+    hits = _friend_request_rate_limits[user_id]
+    while hits and hits[0] < cutoff:
+        hits.popleft()
+    if len(hits) >= FRIEND_REQUEST_RATE_LIMIT_PER_MINUTE:
+        raise HTTPException(status_code=429, detail="Too many requests. Try again in a minute.")
+    hits.append(now)
 
 
 class FriendRequestCreate(BaseModel):
@@ -92,9 +113,11 @@ async def search_profiles(q: str, current_user: AuthenticatedUser = Depends(get_
     if len(query) < 2:
         return {"results": []}
 
+    escaped_query = query.replace("%", r"\%").replace("_", r"\_")
+
     result = supabase_admin.table("profiles")\
         .select("id, username, avatar_url, bio")\
-        .ilike("username", f"%{query}%")\
+        .ilike("username", f"%{escaped_query}%")\
         .neq("id", current_user.id)\
         .limit(8)\
         .execute()
@@ -105,8 +128,13 @@ async def search_profiles(q: str, current_user: AuthenticatedUser = Depends(get_
 @router.post("/requests")
 async def send_friend_request(body: FriendRequestCreate, current_user: AuthenticatedUser = Depends(get_current_user)):
     target_id = body.profile_id
+    try:
+        uuid.UUID(target_id)
+    except (ValueError, AttributeError):
+        raise HTTPException(status_code=400, detail="Invalid profile ID format")
     if target_id == current_user.id:
         raise HTTPException(status_code=400, detail="You cannot add yourself")
+    _enforce_friend_request_rate_limit(current_user.id)
 
     target = supabase_admin.table("profiles")\
         .select("id")\
