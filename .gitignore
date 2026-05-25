@@ -6,3 +6,4 @@ venv
 __pycache__/
 progress.md
 docker-compose.yml
+infrastructure.md
