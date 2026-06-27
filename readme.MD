@@ -68,13 +68,13 @@ GameOn lets players discover games, compare live storefront prices, write review
 ```mermaid
 flowchart LR
   U[User Browser] --> V[Vercel Frontend\nReact + Vite]
-  V -->|/api rewrites| B[AWS EC2 Backend\nFastAPI + Docker + Nginx + Certbot]
+  V -->|VITE_API_URL| B[AWS EC2 Backend\nFastAPI + Docker + Nginx + Certbot]
   B --> S[Supabase\nPostgres + Auth]
   B --> R[RAWG API]
   B --> P[Steam / Epic / PlayStation / Xbox]
 ```
 
-The frontend is deployed on Vercel. The backend runs on AWS EC2 in Docker behind Nginx, with Certbot providing auto-renewing TLS. The Docker Compose files in this repository are for local development and testing only, not production deployment.
+The frontend is deployed on Vercel and reads its backend base URL from `VITE_API_URL`. The backend runs on AWS EC2 in Docker behind Nginx, with Certbot providing auto-renewing TLS. The Docker Compose files in this repository are for local development and testing only, not production deployment.
 
 ## Local Development
 
